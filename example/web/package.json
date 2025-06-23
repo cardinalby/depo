@@ -1,0 +1,44 @@
+{
+    "name": "depo-web",
+    "version": "1.0.0",
+    "private": true,
+    "dependencies": {
+        "@types/node": "^18.19.0",
+        "@types/react": "^18.2.0",
+        "@types/react-dom": "^18.2.0",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-flow-renderer": "^10.3.17",
+        "react-scripts": "5.0.1",
+        "typescript": "^4.9.5",
+        "web-vitals": "^3.3.2",
+        "elkjs": "^0.8.2"
+    },
+    "scripts": {
+        "copy_wasm_exec": "cp \"$(go env GOROOT)/lib/wasm/wasm_exec.js\" public/wasm_exec.js",
+        "wasm_build": "GOOS=js GOARCH=wasm go build -o public/handler.wasm ..",
+        "start_react": "react-scripts start",
+        "build_react": "react-scripts build",
+        "eject_react": "react-scripts eject",
+        "build": "npm run copy_wasm_exec && npm run wasm_build && npm run build_react"
+    },
+    "eslintConfig": {
+        "extends": [
+            "react-app",
+            "react-app/jest"
+        ]
+    },
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    }
+}
+

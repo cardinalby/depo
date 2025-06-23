@@ -1,0 +1,3 @@
+package strs
+
+const MessagesPadding = "    "

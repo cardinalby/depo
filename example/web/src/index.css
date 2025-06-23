@@ -1,0 +1,240 @@
+body {
+    margin: 0;
+    background: #f8f9fa;
+    color: #333;
+    font-family: 'Courier New', monospace;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.app {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.toolbar {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    font-size: 14px;
+}
+
+.toolbar button {
+    background: #222;
+    color: #f4f4f4;
+    border: 1px solid #aaa;
+    padding: 6px 12px;
+    margin-right: 8px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.toolbar button:hover {
+    background: #333;
+}
+
+.status-line {
+    position: absolute;
+    top: 82px;
+    left: 10px;
+    background: #fff;
+    border: 1px solid #aaa;
+    padding: 8px;
+    font-size: 12px;
+    z-index: 20;
+}
+
+.status-state.non_runnable {
+    color: #333;
+}
+
+.status-state.pending {
+    color: #888;
+}
+
+.status-state.starting {
+    color: #FF9800;
+}
+
+.status-state.ready {
+    color: #4CAF50;
+}
+
+.status-state.closing {
+    color: #2196F3;
+}
+
+.status-state.done {
+    color: #000;
+}
+
+.legend {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: #fff;
+    color: #000;
+    border: 1px solid #aaa;
+    padding: 10px;
+    font-size: 12px;
+    z-index: 10;
+}
+
+.legend-item {
+    margin: 2px 0;
+}
+
+.legend-color {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.component-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(17, 24, 39, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.component-modal-content {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    padding: 16px 16px 12px;
+    width: 360px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.component-modal h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+}
+
+.meta-line {
+    display: flex;
+    justify-content: space-between;
+    color: #6b7280;
+    font-size: 12px;
+    margin-bottom: 12px;
+}
+
+.status-tag {
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.form-group {
+    margin: 12px 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #111827;
+    border-radius: 6px;
+    font-family: inherit;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.modal-buttons button {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #111827;
+    background: #111827;
+    color: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    border-radius: 6px;
+}
+
+.modal-buttons button:hover {
+    background: #0b1220;
+}
+
+.modal-buttons .danger {
+    background: #ef4444;
+    border-color: #ef4444;
+}
+
+.modal-buttons .danger:hover {
+    background: #dc2626;
+}
+
+.hint {
+    margin-top: 8px;
+    color: #6b7280;
+    font-size: 11px;
+    text-align: center;
+}
+
+.graph-container {
+    width: 100%;
+    height: 100%;
+}
+
+.error-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #f44336;
+    color: white;
+    padding: 20px;
+    border-radius: 4px;
+    z-index: 100;
+}
+
+.loading-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border: 1px solid #aaa;
+    padding: 20px;
+    border-radius: 4px;
+    z-index: 100;
+}
+
+.result-line {
+    margin-top: 4px;
+    font-size: 12px;
+}
+
+.result-value.error {
+    color: #b71c1c;
+}
+
+.result-value.ok {
+    color: #000;
+}
