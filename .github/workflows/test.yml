@@ -1,0 +1,23 @@
+name: test
+
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version-file: 'go.mod'
+
+      - run: go mod download
+
+      - env:
+          GOEXPERIMENT: "synctest"
+        run: go test -tags depo.testing -race ./...

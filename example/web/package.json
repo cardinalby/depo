@@ -17,7 +17,7 @@
     "scripts": {
         "copy_wasm_exec": "cp \"$(go env GOROOT)/lib/wasm/wasm_exec.js\" public/wasm_exec.js",
         "wasm_build": "GOOS=js GOARCH=wasm go build -o public/handler.wasm ..",
-        "start_react": "react-scripts start",
+        "start_react": "npm run wasm_build && react-scripts start",
         "build_react": "react-scripts build",
         "eject_react": "react-scripts eject",
         "build": "npm run copy_wasm_exec && npm run wasm_build && npm run build_react"

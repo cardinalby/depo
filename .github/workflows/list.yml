@@ -1,0 +1,26 @@
+name: list
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version-file: 'go.mod'
+
+      - run: go mod download
+
+      - env:
+          GOEXPERIMENT: "synctest"
+        run: go test -tags depo.testing ./...
+
+      - env:
+          GOPROXY: "proxy.golang.org"
+        run: go list -m github.com/cardinalby/depo@${{ github.ref_name }}
