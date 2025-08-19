@@ -147,7 +147,6 @@ func newStarterMock(tag int) *starterMock {
 }
 
 func (s *starterMock) Start(ctx context.Context) error {
-	fmt.Printf("%s Starting component with tag: %d\n", time.Now().String(), s.tag)
 	return <-s.exec(ctx)
 }
 
@@ -164,7 +163,6 @@ func newWaiterMock(tag int) *waiterMock {
 }
 
 func (w *waiterMock) wait() error {
-	fmt.Println("Waiting for tag:", w.tag)
 	return <-w.exec(nil)
 }
 

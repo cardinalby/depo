@@ -79,7 +79,6 @@ func (recs testDefRecs) triggerWaitErrOnClose(waitErr error, waitExitSleepD ...t
 		}
 		if rec.closerMock != nil {
 			rec.closerMock.phaseAction = func() {
-				fmt.Printf("mock: Triggering wait error for %d\n", rec.tag)
 				rec.waiterMock.errChan <- waitErr
 			}
 		}

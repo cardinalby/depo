@@ -41,7 +41,7 @@ type nodeLateInitFrame struct {
 	// depNode that is associated with this frame
 	depNode depNode
 
-	// sequential number of the lateInit in the nodeFramesStack, 0 for component frames
+	// sequential number of the lateInit in the nodeFramesStack (for this depNode)
 	seqNum int
 
 	// callerCtxs traces lateInit registration call in the client code in `provider` function.

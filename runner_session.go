@@ -49,9 +49,6 @@ func newRunnerSession(
 }
 
 func (rs *runnerSession) run(ctx context.Context) error {
-	defer func() {
-		fmt.Printf("runner is done!!!!\n")
-	}()
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -116,12 +113,6 @@ func (rs *runnerSession) loopAfterCtxDone() error {
 }
 
 func (rs *runnerSession) handleNodeClosed(node *lcNode, doneState lcNodePhaseDoneState) (done bool) {
-	if doneState == lcNodePhaseDoneStateCompleted {
-		fmt.Printf("Node %v closed\n", node.Tag())
-	} else {
-		fmt.Printf("Node %v is marked as closed\n", node.Tag())
-	}
-
 	node.runState.isClosing = false
 	//goland:noinspection GoBoolExpressions
 	if tests.IsTestingBuild && node.runState.isCloseDone > 0 {
@@ -133,13 +124,8 @@ func (rs *runnerSession) handleNodeClosed(node *lcNode, doneState lcNodePhaseDon
 
 	if node.runState.IsDone() {
 		rs.stats.onNodeDependenciesHaveDoneDependent(node)
-		fmt.Printf("closing node %v dependencies\n", node.Tag())
-		if done := rs.tryCloseNodeDependencies(node); done {
-			return true
-		}
-		return false // todo simplify after removing logs
+		return rs.tryCloseNodeDependencies(node)
 	}
-	fmt.Printf("node %v is not done: isWaitDone: %v, isCloseDone: %v\n", node.Tag(), node.runState.isWaitDone, node.runState.isCloseDone)
 	// if we are here it means wait is not done
 	return false
 }
@@ -163,12 +149,8 @@ func (rs *runnerSession) tryCloseNode(node *lcNode, cause error) (done bool) {
 		return false
 
 	case node.runState.isCloseDone > 0:
-		fmt.Printf("case %v.runState.isCloseDone > 0\n", node.Tag())
 		// the node is already closed by itself but its dependencies are not closed yet
 		if node.runState.closedDependencies < len(node.dependsOn) {
-			fmt.Printf("node %v is closed but has not closed all dependencies yet: %d/%d\n",
-				node.Tag(), node.runState.closedDependencies, len(node.dependsOn),
-			)
 			return rs.tryCloseNodeDependencies(node)
 		}
 		return rs.stats.isAllDone()
@@ -198,7 +180,6 @@ func (rs *runnerSession) tryCloseNode(node *lcNode, cause error) (done bool) {
 	default:
 	}
 
-	fmt.Printf("Closing node %v\n", node.Tag())
 	rs.config.listeners.OnClose(node.lcNodeOwnInfo, cause)
 
 	if !node.lcHook.hasCloser() || node.lcHook.waiter != nil && node.runState.isWaitDone > 0 {
@@ -227,7 +208,6 @@ func (rs *runnerSession) tryShutDown(err error, cause error) (done bool) {
 	rs.shutdownErr = err
 	rs.shutdownCause = cause
 	rs.cancelStartingCtx(cause)
-	fmt.Printf("Shutting down session:\nerr: %v\ncause: %v\n", err, cause)
 
 	for _, node := range rs.graph.roots {
 		if done := rs.tryCloseNode(node, cause); done {
@@ -243,12 +223,6 @@ func (rs *runnerSession) handleNodeWaited(waitRes nodeErrResult, doneState lcNod
 	waitRes.node.runState.isWaitDone = doneState
 
 	if doneState == lcNodePhaseDoneStateCompleted {
-		fmt.Printf("Node %v waited: %v\n", waitRes.node.Tag(), waitRes.err)
-	} else {
-		fmt.Printf("mark %v as waited\n", waitRes.node.Tag())
-	}
-
-	if doneState == lcNodePhaseDoneStateCompleted {
 		if tests.IsTestingBuild && waitRes.node.lcHook.waiter == nil {
 			panic(fmt.Sprintf("handleNodeWaited(%v) with no waiter", waitRes.node.Tag()))
 		}
@@ -261,8 +235,6 @@ func (rs *runnerSession) handleNodeWaited(waitRes nodeErrResult, doneState lcNod
 		}
 	}
 	if waitRes.node.runState.IsDone() {
-		fmt.Printf("node %v is done: isWaitDone: %v, isCloseDone: %v\n",
-			waitRes.node.Tag(), waitRes.node.runState.isWaitDone, waitRes.node.runState.isCloseDone)
 		rs.config.listeners.OnDone(waitRes.node.lcNodeOwnInfo, waitRes.err)
 		rs.stats.onNodeDependenciesHaveDoneDependent(waitRes.node)
 	}
@@ -273,7 +245,6 @@ func (rs *runnerSession) handleNodeWaited(waitRes nodeErrResult, doneState lcNod
 		}
 	}
 	if rs.shutdownErr != nil {
-		fmt.Printf("handleNodeWaited: tryCloseNode(%v)\n", waitRes.node.Tag())
 		return rs.tryCloseNode(waitRes.node, rs.shutdownCause)
 	}
 
@@ -307,11 +278,6 @@ func (rs *runnerSession) handleNodeStarted(startRes nodeErrResult, doneState lcN
 	if tests.IsTestingBuild && startRes.node.runState.readyDeps != len(startRes.node.dependsOn) {
 		panic(fmt.Sprintf("node %v started with %d ready deps but has %d dependencies",
 			startRes.node.Tag(), startRes.node.runState.readyDeps, len(startRes.node.dependsOn)))
-	}
-	if doneState == lcNodePhaseDoneStateCompleted {
-		fmt.Printf("Node %v started: %v\n", startRes.node.Tag(), startRes.err)
-	} else {
-		fmt.Printf("mark %v as started\n", startRes.node.Tag())
 	}
 	startRes.node.runState.isStarting = false
 	startRes.node.runState.isStartDone = doneState
@@ -442,10 +408,6 @@ func (s *lcNodesStats) isAllDone() bool {
 		if s.remainingCloses < 0 {
 			panic(fmt.Sprintf("remainingCloses is negative: %d", s.remainingCloses))
 		}
-	}
-
-	if s.remainingWaits+s.remainingCloses > 0 {
-		fmt.Printf("runner is not done: remainingWaits: %d, remainingCloses: %d\n", s.remainingWaits, s.remainingCloses)
 	}
 
 	return s.remainingWaits+s.remainingCloses == 0

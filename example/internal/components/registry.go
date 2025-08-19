@@ -3,7 +3,6 @@ package components
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -77,9 +76,6 @@ func (cn *runnableComponent) setDoneErr(err error) {
 }
 
 func (cn *runnableComponent) Run(ctx context.Context, onReady func()) error {
-	defer func() {
-		fmt.Printf("RunnableComponent(%s).Run returned\n", cn.name)
-	}()
 	cfg := cn.GetConfig()
 	cn.setStatus(domain.StatusStarting)
 
