@@ -14,7 +14,7 @@ var errInProvideContext = errors.New("must NOT be called inside `provider` funct
 // (corresponds to Runner.Run or Starter.Start error)
 type ErrLifecycleHookFailed interface {
 	error
-	LifecycleHook() LifecycleHook
+	LifecycleHook() LifecycleHookInfo
 	Unwrap() error
 }
 
@@ -54,7 +54,7 @@ func (e errLifecycleHookFailed) Error() string {
 	return sb.String()
 }
 
-func (e errLifecycleHookFailed) LifecycleHook() LifecycleHook {
+func (e errLifecycleHookFailed) LifecycleHook() LifecycleHookInfo {
 	return e.lcNodeOwnInfo
 }
 
@@ -62,4 +62,6 @@ func (e errLifecycleHookFailed) Unwrap() error {
 	return e.err
 }
 
-var errUnexpectedRunNilRunResult = errors.New("unexpected Run nil result")
+// ErrUnexpectedRunNilRunResult is returned from Runner.Run if the Run result is nil
+// and OptNilRunResultAsError option is set
+var ErrUnexpectedRunNilRunResult = errors.New("unexpected Run nil result")

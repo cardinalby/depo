@@ -17,24 +17,46 @@ var errNotInProviderFn = errors.New("must be called inside `provider` function")
 type LifecycleHookBuilder interface {
 	// AddReadinessRunnable registers a ReadinessRunnable in the component's lifecycle.
 	// Should be called only once, panics if other methods has been already called
-	AddReadinessRunnable(runnable ReadinessRunnable) LifecycleHookBuilder
+	// `options` can be used to configure the way it's handled by the Runner:
+	// OptStartTimeout, OptNilRunResultAsError
+	AddReadinessRunnable(
+		runnable ReadinessRunnable,
+		options ...ReadinessRunnableOption,
+	) LifecycleHookBuilder
 
 	// AddReadinessRunFn is a convenience method to AddReadinessRunFn having only its Run function
-	AddReadinessRunFn(runFn func(ctx context.Context, onReady func()) error) LifecycleHookBuilder
+	AddReadinessRunFn(
+		runFn func(ctx context.Context, onReady func()) error,
+		options ...ReadinessRunnableOption,
+	) LifecycleHookBuilder
 
 	// AddRunnable registers a Runnable in the component's lifecycle.
 	// Should be called only once, panics if other methods has been already called
-	AddRunnable(runnable Runnable) LifecycleHookBuilder
+	// `options` can be used to configure the way it's handled by the Runner: OptNilRunResultAsError
+	AddRunnable(
+		runnable Runnable,
+		options ...RunnableOption,
+	) LifecycleHookBuilder
 
 	// AddRunFn is a convenience method to AddRunnable having only its Run function
-	AddRunFn(runFn func(ctx context.Context) error) LifecycleHookBuilder
+	AddRunFn(
+		runFn func(ctx context.Context) error,
+		options ...RunnableOption,
+	) LifecycleHookBuilder
 
 	// AddStarter registers a Starter in the component's lifecycle.
 	// Panics if any runnables or starters has been already added in the chain
-	AddStarter(starter Starter) LifecycleHookBuilder
+	// `options` can be used to configure the way it's handled by the Runner: OptStartTimeout
+	AddStarter(
+		starter Starter,
+		options ...StarterOption,
+	) LifecycleHookBuilder
 
 	// AddStartFn is a convenience method to AddStarter having only its Start function
-	AddStartFn(startFn func(ctx context.Context) error) LifecycleHookBuilder
+	AddStartFn(
+		startFn func(ctx context.Context) error,
+		options ...StarterOption,
+	) LifecycleHookBuilder
 
 	// AddCloser registers a Closer in the component's lifecycle
 	// Panics if any runnables or closers has been already added in the chain
@@ -66,57 +88,75 @@ func UseLifecycle() LifecycleHookBuilder {
 }
 
 type lifecycleHookBuilder struct {
-	regAt             runtm.CallerCtxs
-	readinessRunnable ReadinessRunnable
-	runnable          Runnable
-	starter           Starter
-	closer            Closer
-	tag               any
+	regAt                runtm.CallerCtxs
+	readinessRunnable    ReadinessRunnable
+	readinessRunnableCfg readinessRunnableCfg
+	runnable             Runnable
+	runnableCfg          runnableCfg
+	starter              Starter
+	starterCfg           starterCfg
+	closer               Closer
+	tag                  any
 }
 
 var errAlreadyAdded = errors.New("already added")
 
-func (b *lifecycleHookBuilder) AddReadinessRunnable(readinessRunnable ReadinessRunnable) LifecycleHookBuilder {
+func (b *lifecycleHookBuilder) AddReadinessRunnable(
+	readinessRunnable ReadinessRunnable,
+	options ...ReadinessRunnableOption,
+) LifecycleHookBuilder {
 	b.checkCanAddRunnable()
 	if readinessRunnable == nil {
 		panic(fmt.Errorf("%w readinessRunnable", errNilValue))
 	}
 	b.readinessRunnable = readinessRunnable
+	b.readinessRunnableCfg = newReadinessRunnableCfg(options)
 	return b
 }
 
 func (b *lifecycleHookBuilder) AddReadinessRunFn(
 	readinessRunFn func(ctx context.Context, onReady func()) error,
+	options ...ReadinessRunnableOption,
 ) LifecycleHookBuilder {
 	b.checkCanAddRunnable()
 	if readinessRunFn == nil {
 		panic(fmt.Errorf("%w readinessRunFn", errNilValue))
 	}
 	b.readinessRunnable = &fnReadinessRunnable{fn: readinessRunFn}
+	b.readinessRunnableCfg = newReadinessRunnableCfg(options)
 	return b
 }
 
-func (b *lifecycleHookBuilder) AddRunnable(runnable Runnable) LifecycleHookBuilder {
+func (b *lifecycleHookBuilder) AddRunnable(
+	runnable Runnable,
+	options ...RunnableOption,
+) LifecycleHookBuilder {
 	b.checkCanAddRunnable()
 	if runnable == nil {
 		panic(fmt.Errorf("%w lcRoles", errNilValue))
 	}
 	b.runnable = runnable
+	b.runnableCfg = newRunnableCfg(options)
 	return b
 }
 
 func (b *lifecycleHookBuilder) AddRunFn(
 	runFn func(ctx context.Context) error,
+	options ...RunnableOption,
 ) LifecycleHookBuilder {
 	b.checkCanAddRunnable()
 	if runFn == nil {
 		panic(fmt.Errorf("%w runFn", errNilValue))
 	}
 	b.runnable = &fnRunnable{fn: runFn}
+	b.runnableCfg = newRunnableCfg(options)
 	return b
 }
 
-func (b *lifecycleHookBuilder) AddStarter(starter Starter) LifecycleHookBuilder {
+func (b *lifecycleHookBuilder) AddStarter(
+	starter Starter,
+	options ...StarterOption,
+) LifecycleHookBuilder {
 	b.checkNoRunnable()
 	if b.starter != nil {
 		panic(fmt.Errorf("starterMock %w", errAlreadyAdded))
@@ -125,11 +165,13 @@ func (b *lifecycleHookBuilder) AddStarter(starter Starter) LifecycleHookBuilder 
 		panic(fmt.Errorf("%w starterMock", errNilValue))
 	}
 	b.starter = starter
+	b.starterCfg = newStarterCfg(options)
 	return b
 }
 
 func (b *lifecycleHookBuilder) AddStartFn(
 	startFn func(ctx context.Context) error,
+	options ...StarterOption,
 ) LifecycleHookBuilder {
 	b.checkNoRunnable()
 	if b.starter != nil {
@@ -142,6 +184,7 @@ func (b *lifecycleHookBuilder) AddStartFn(
 		panic(fmt.Errorf("starterMock %w", errAlreadyAdded))
 	}
 	b.starter = &fnStarter{fn: startFn}
+	b.starterCfg = newStarterCfg(options)
 	return b
 }
 
@@ -213,15 +256,19 @@ func (b *lifecycleHookBuilder) getHook() (*lifecycleHook, bool) {
 		lcHook.starter = adapter
 		lcHook.waiter = adapter
 		lcHook.causeCloser = adapter
+		lcHook.starterCfg = b.readinessRunnableCfg.starterCfg
+		lcHook.waiterCfg = b.readinessRunnableCfg.waiterCfg
 
 	case b.runnable != nil:
 		adapter := newPhasedRunnable(b.runnable)
 		lcHook.starter = adapter
 		lcHook.waiter = adapter
 		lcHook.causeCloser = adapter
+		lcHook.waiterCfg = b.runnableCfg.waiterCfg
 
 	default:
 		lcHook.starter = b.starter
+		lcHook.starterCfg = b.starterCfg
 		lcHook.closer = b.closer
 	}
 
@@ -231,7 +278,9 @@ func (b *lifecycleHookBuilder) getHook() (*lifecycleHook, bool) {
 type lifecycleHook struct {
 	regAt       runtm.CallerCtxs
 	starter     Starter
+	starterCfg  starterCfg
 	waiter      waiter
+	waiterCfg   waiterCfg
 	closer      Closer
 	causeCloser causeCloser
 	tag         any

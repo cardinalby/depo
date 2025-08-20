@@ -1,6 +1,7 @@
 package dep
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -28,6 +29,8 @@ type Info struct {
 
 	// "Provide" or "ProvideErr" - which constructor was used to define the component
 	defCtorName string
+
+	tag any
 }
 
 func NewDepInfo(
@@ -53,14 +56,13 @@ func (d Info) String() string {
 	var sb strings.Builder
 	if d.defCtorName != "" {
 		sb.WriteString(d.defCtorName)
-		sb.WriteString("(")
-		sb.WriteString(d.Id.String())
-		sb.WriteString(") ")
-	} else {
-		sb.WriteString("[")
-		sb.WriteString(d.Id.String())
-		sb.WriteString("] ")
 	}
+	sb.WriteString("(")
+	sb.WriteString(d.Id.String())
+	if d.tag != nil {
+		sb.WriteString(fmt.Sprintf(" tag: %v", d.tag))
+	}
+	sb.WriteString(") ")
 	if d.valueType != nil {
 		sb.WriteString(d.valueType.String())
 	} else if tests.IsTestingBuild {
@@ -71,6 +73,14 @@ func (d Info) String() string {
 	sb.WriteString(":")
 	sb.WriteString(strconv.Itoa(d.Ctx.RegAt.Line()))
 	return sb.String()
+}
+
+func (d Info) GetTag() any {
+	return d.tag
+}
+
+func (d *Info) SetTag(tag any) {
+	d.tag = tag
 }
 
 // Ctx contains the unique identifier of a dependency and the context in which it was registered

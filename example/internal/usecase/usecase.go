@@ -32,10 +32,10 @@ func newGraph(listener depo.RunnerListener, shutDownOnNilRunResult bool) *graph 
 	reg := components.NewRegistry()
 	c := components.GetComponents(reg)
 	options := []depo.RunnerOption{
-		depo.RunnerOptListeners(listener),
+		depo.OptRunnerListeners(listener),
 	}
 	if shutDownOnNilRunResult {
-		options = append(options, depo.RunnerOptShutDownOnNilRunResult())
+		options = append(options, depo.OptNilRunResultAsError())
 	}
 	runner, err := depo.NewRunnerE(func() error {
 		c.A()
@@ -226,19 +226,19 @@ func (u *Usecase) StopComponent(compID uint64, withErr bool) error {
 	return nil
 }
 
-func (u *Usecase) OnStart(lcHook depo.LifecycleHook) {
+func (u *Usecase) OnStart(lcHook depo.LifecycleHookInfo) {
 	u.logFn("listener.OnStart(%v)\n", lcHook.ComponentInfo().ID())
 }
 
-func (u *Usecase) OnReady(lcHook depo.LifecycleHook) {
+func (u *Usecase) OnReady(lcHook depo.LifecycleHookInfo) {
 	u.logFn("listener.OnReady(%v)\n", lcHook.ComponentInfo().ID())
 }
 
-func (u *Usecase) OnClose(lcHook depo.LifecycleHook, cause error) {
+func (u *Usecase) OnClose(lcHook depo.LifecycleHookInfo, cause error) {
 	u.logFn("listener.OnClose(%v, %v)\n", lcHook.ComponentInfo().ID(), u.formatErr(cause))
 }
 
-func (u *Usecase) OnDone(lcHook depo.LifecycleHook, result error) {
+func (u *Usecase) OnDone(lcHook depo.LifecycleHookInfo, result error) {
 	u.logFn("listener.OnDone(%v, %v)\n", lcHook.ComponentInfo().ID(), u.formatErr(result))
 }
 

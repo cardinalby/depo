@@ -6,13 +6,13 @@ import (
 	"sync/atomic"
 
 	"github.com/cardinalby/depo/internal/runtm"
-	"github.com/cardinalby/depo/internal/signals"
+	"github.com/cardinalby/depo/pkg/contexts"
 )
 
-// LifecycleHookNode is an extension of LifecycleHook providing information about dependencies between
+// LifecycleHookNode is an extension of LifecycleHookInfo providing information about dependencies between
 // lifecycle hooks for debugging purposes.
 type LifecycleHookNode interface {
-	LifecycleHook
+	LifecycleHookInfo
 	DependsOnHooks() []LifecycleHookNode
 }
 
@@ -20,16 +20,18 @@ type LifecycleHookNode interface {
 type ComponentInfo interface {
 	Value() any
 	ID() uint64
+	Tag() any
 }
 
 // Runner is a lifecycle manager that runs and closes components' lifecycle hooks in the correct order
 // according to the dependency graph of the components.
 type Runner interface {
-	// Run starts the runner and returns when all components are done.
-	// `onReady` is called when all components are ready.
+	// Run starts all the components in the proper order (starting from the leafs) and returns when all
+	// components are done. `onReady` is called when all components are ready.
 	// If the context is canceled, the runner will stop all components in the proper order (starting from
 	// the roots) and return context.Canceled.
 	// If the context is nil, a "shutdown context" is used (gets cancelled by SIGINT/SIGTERM).
+	// See pkg/contexts/NewShutdownContext for details.
 	Run(ctx context.Context, onReady func()) error
 
 	// GetRootLifecycleHookNodes can be used for debugging / logging purposes
@@ -125,7 +127,7 @@ type runner struct {
 func (r *runner) Run(ctx context.Context, onReady func()) error {
 	if ctx == nil {
 		var cancel context.CancelCauseFunc
-		ctx, cancel = signals.NewShutdownContext()
+		ctx, cancel = contexts.NewShutdownContext(context.Background())
 		defer cancel(nil)
 	}
 	if r.isRunning.Swap(true) {

@@ -47,6 +47,9 @@ func (s *stubDepNode) SetRegResult(
 ) {
 }
 
+func (s *stubDepNode) SetTag(_ any) {
+}
+
 func (s *stubDepNode) GetProvidedValue() any {
 	return nil
 }

@@ -8,6 +8,7 @@ import (
 type componentInfo struct {
 	id    uint64
 	value any
+	tag   any
 }
 
 func (ci *componentInfo) ID() uint64 {
@@ -16,6 +17,10 @@ func (ci *componentInfo) ID() uint64 {
 
 func (ci *componentInfo) Value() any {
 	return ci.value
+}
+
+func (ci *componentInfo) Tag() any {
+	return ci.tag
 }
 
 type lcNodeOwnInfo struct {
@@ -36,9 +41,11 @@ func (lcn lcNodeOwnInfo) String() string {
 }
 
 func (lcn lcNodeOwnInfo) ComponentInfo() ComponentInfo {
+	depInfo := lcn.depNode.GetDepInfo()
 	return &componentInfo{
-		id:    uint64(lcn.depNode.GetDepInfo().Id),
+		id:    uint64(depInfo.Id),
 		value: lcn.depNode.GetProvidedValue(),
+		tag:   depInfo.GetTag(),
 	}
 }
 

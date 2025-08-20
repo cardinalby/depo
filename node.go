@@ -62,6 +62,7 @@ type depNode interface {
 		lcHooks []*lifecycleHook,
 		hasOwnOrTransitiveRunnables bool,
 	)
+	SetTag(tag any)
 
 	// GetProvidedValue should be called only after the node is registered and providing is finished
 	GetProvidedValue() any
@@ -228,6 +229,10 @@ func (node *componentNode[T]) SetRegResult(
 		node.regState = nodeRegStateWithNoLcHooks
 	}
 	node.isRegistered.Store(true)
+}
+
+func (node *componentNode[T]) SetTag(tag any) {
+	node.depInfo.SetTag(tag)
 }
 
 func (node *componentNode[T]) createCyclicDependencyError(stack readonlyNodeFramesStack) *errCyclicDependencyStruct {

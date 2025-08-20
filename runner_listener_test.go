@@ -23,7 +23,7 @@ const (
 type runnerListenerMockEvent struct {
 	moment    time.Time
 	eventType runnerListenerMockEventType
-	info      LifecycleHook
+	info      LifecycleHookInfo
 	err       error
 }
 
@@ -46,7 +46,7 @@ func (l *runnerListenerMock) assertCalledInSameGoroutine() {
 	}
 }
 
-func (l *runnerListenerMock) OnStart(info LifecycleHook) {
+func (l *runnerListenerMock) OnStart(info LifecycleHookInfo) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	l.assertCalledInSameGoroutine()
@@ -58,7 +58,7 @@ func (l *runnerListenerMock) OnStart(info LifecycleHook) {
 	})
 }
 
-func (l *runnerListenerMock) OnReady(info LifecycleHook) {
+func (l *runnerListenerMock) OnReady(info LifecycleHookInfo) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	l.assertCalledInSameGoroutine()
@@ -70,7 +70,7 @@ func (l *runnerListenerMock) OnReady(info LifecycleHook) {
 	})
 }
 
-func (l *runnerListenerMock) OnClose(info LifecycleHook, cause error) {
+func (l *runnerListenerMock) OnClose(info LifecycleHookInfo, cause error) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	l.assertCalledInSameGoroutine()
@@ -82,7 +82,7 @@ func (l *runnerListenerMock) OnClose(info LifecycleHook, cause error) {
 	})
 }
 
-func (l *runnerListenerMock) OnDone(info LifecycleHook, result error) {
+func (l *runnerListenerMock) OnDone(info LifecycleHookInfo, result error) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	l.assertCalledInSameGoroutine()

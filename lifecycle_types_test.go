@@ -33,15 +33,33 @@ func (l *lcPhaseMock) exec(ctx context.Context) chan error {
 	if old := l.enterEventId.Swap(lastRunnableEventSeqNo.Add(1)); old != -1 {
 		panic(fmt.Sprintf("enterEventId already set: %d, new: %d", old, l.enterEventId.Load()))
 	}
-	if d := l.enterSleepDuration.Load(); d > 0 {
-		time.Sleep(time.Duration(d))
-	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
 	res := make(chan error, 1)
 	go func() {
+		if d := l.enterSleepDuration.Load(); d > 0 {
+			select {
+			case <-ctx.Done():
+				fmt.Printf("enterSleepDuration: %d, ctx done: %v cause: %v\n", d, ctx.Err(), context.Cause(ctx))
+				if old := l.exitEventId.Swap(lastRunnableEventSeqNo.Add(1)); old != -1 {
+					panic(fmt.Sprintf("exitEventId already set: %d, new: %d", old, l.exitEventId.Load()))
+				}
+				cause := context.Cause(ctx)
+				l.ctxDoneCause.Store(&cause)
+				if l.doNotExitOnCtxDone {
+					res <- <-l.errChan
+				} else {
+					res <- ctx.Err()
+				}
+				return
+
+			case <-time.After(time.Duration(d)):
+				fmt.Printf("enterSleepDuration: %d\n", d)
+			}
+		}
+
 		select {
 		case err := <-l.errChan:
 			if old := l.exitEventId.Swap(lastRunnableEventSeqNo.Add(1)); old != -1 {
@@ -53,7 +71,6 @@ func (l *lcPhaseMock) exec(ctx context.Context) chan error {
 			if old := l.exitEventId.Swap(lastRunnableEventSeqNo.Add(1)); old != -1 {
 				panic(fmt.Sprintf("exitEventId already set: %d, new: %d", old, l.exitEventId.Load()))
 			}
-			time.Sleep(time.Duration(l.exitSleepDuration.Load()))
 			cause := context.Cause(ctx)
 			l.ctxDoneCause.Store(&cause)
 			if l.doNotExitOnCtxDone {

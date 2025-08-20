@@ -1,5 +1,7 @@
 package depo
 
+import "context"
+
 // lcNode is a lifecycle depNode that represents a runnable with its dependencies
 type lcNode struct {
 	lcNodeOwnInfo
@@ -46,6 +48,7 @@ const (
 type lcNodeRunState struct {
 	isStarting         bool
 	isStartDone        lcNodePhaseDoneState
+	cancelStartCtx     context.CancelCauseFunc
 	isWaiting          bool
 	isWaitDone         lcNodePhaseDoneState
 	isClosing          bool

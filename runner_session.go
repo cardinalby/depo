@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/cardinalby/depo/internal/tests"
 )
@@ -16,17 +17,15 @@ type nodeErrResult struct {
 }
 
 type runnerSession struct {
-	graph             lcNodesGraph
-	config            runnerCfg
-	onReady           func()
-	startingCtx       context.Context
-	cancelStartingCtx context.CancelCauseFunc
-	shutdownCause     error
-	shutdownErr       error
-	stats             *lcNodesStats
-	startResults      chan nodeErrResult
-	closeResults      chan *lcNode
-	waitResults       chan nodeErrResult
+	graph         lcNodesGraph
+	config        runnerCfg
+	onReady       func()
+	shutdownCause error
+	shutdownErr   error
+	stats         *lcNodesStats
+	startResults  chan nodeErrResult
+	closeResults  chan *lcNode
+	waitResults   chan nodeErrResult
 }
 
 func newRunnerSession(
@@ -34,17 +33,14 @@ func newRunnerSession(
 	onReady func(),
 	config runnerCfg,
 ) runnerSession {
-	startingCtx, cancelStartingCtx := context.WithCancelCause(context.Background())
 	return runnerSession{
-		graph:             graph,
-		config:            config,
-		onReady:           onReady,
-		startingCtx:       startingCtx,
-		cancelStartingCtx: cancelStartingCtx,
-		stats:             newLcNodesStats(graph.totalCount),
-		startResults:      make(chan nodeErrResult),
-		closeResults:      make(chan *lcNode),
-		waitResults:       make(chan nodeErrResult),
+		graph:        graph,
+		config:       config,
+		onReady:      onReady,
+		stats:        newLcNodesStats(graph.totalCount),
+		startResults: make(chan nodeErrResult),
+		closeResults: make(chan *lcNode),
+		waitResults:  make(chan nodeErrResult),
 	}
 }
 
@@ -180,7 +176,7 @@ func (rs *runnerSession) tryCloseNode(node *lcNode, cause error) (done bool) {
 	default:
 	}
 
-	rs.config.listeners.OnClose(node.lcNodeOwnInfo, cause)
+	rs.config.runnerListeners.OnClose(node.lcNodeOwnInfo, cause)
 
 	if !node.lcHook.hasCloser() || node.lcHook.waiter != nil && node.runState.isWaitDone > 0 {
 		return rs.handleNodeClosed(node, lcNodePhaseDoneStateSkipped)
@@ -204,10 +200,10 @@ func (rs *runnerSession) tryShutDown(err error, cause error) (done bool) {
 	if rs.shutdownErr != nil {
 		return rs.stats.isAllDone()
 	}
-	rs.config.listeners.OnShutdown(cause)
+	rs.config.runnerListeners.OnShutdown(cause)
 	rs.shutdownErr = err
 	rs.shutdownCause = cause
-	rs.cancelStartingCtx(cause)
+	rs.interruptStarts(cause)
 
 	for _, node := range rs.graph.roots {
 		if done := rs.tryCloseNode(node, cause); done {
@@ -215,6 +211,22 @@ func (rs *runnerSession) tryShutDown(err error, cause error) (done bool) {
 		}
 	}
 	return rs.stats.isAllDone()
+}
+
+func (rs *runnerSession) interruptStarts(cause error) {
+	fmt.Printf("Interrupting starts with cause: %v\n", cause)
+	var interruptNodeStart func(node *lcNode)
+	interruptNodeStart = func(node *lcNode) {
+		if node.runState.cancelStartCtx != nil {
+			node.runState.cancelStartCtx(cause)
+		}
+		for _, dependency := range node.dependsOn {
+			interruptNodeStart(dependency)
+		}
+	}
+	for _, node := range rs.graph.roots {
+		interruptNodeStart(node)
+	}
 }
 
 func (rs *runnerSession) handleNodeWaited(waitRes nodeErrResult, doneState lcNodePhaseDoneState) (done bool) {
@@ -226,8 +238,8 @@ func (rs *runnerSession) handleNodeWaited(waitRes nodeErrResult, doneState lcNod
 		if tests.IsTestingBuild && waitRes.node.lcHook.waiter == nil {
 			panic(fmt.Sprintf("handleNodeWaited(%v) with no waiter", waitRes.node.Tag()))
 		}
-		if waitRes.err == nil && rs.config.shutDownOnNilRunResult {
-			waitRes.err = errUnexpectedRunNilRunResult
+		if waitRes.err == nil && rs.isNilRunResultAsError(waitRes.node) {
+			waitRes.err = ErrUnexpectedRunNilRunResult
 		}
 		if !waitRes.node.runState.isClosing && waitRes.node.runState.isCloseDone == lcNodePhaseDoneStateNone {
 			waitRes.node.runState.isCloseDone = lcNodePhaseDoneStateSkipped
@@ -235,7 +247,7 @@ func (rs *runnerSession) handleNodeWaited(waitRes nodeErrResult, doneState lcNod
 		}
 	}
 	if waitRes.node.runState.IsDone() {
-		rs.config.listeners.OnDone(waitRes.node.lcNodeOwnInfo, waitRes.err)
+		rs.config.runnerListeners.OnDone(waitRes.node.lcNodeOwnInfo, waitRes.err)
 		rs.stats.onNodeDependenciesHaveDoneDependent(waitRes.node)
 	}
 	if rs.shutdownErr == nil && waitRes.err != nil {
@@ -281,6 +293,10 @@ func (rs *runnerSession) handleNodeStarted(startRes nodeErrResult, doneState lcN
 	}
 	startRes.node.runState.isStarting = false
 	startRes.node.runState.isStartDone = doneState
+	if startRes.node.runState.cancelStartCtx != nil {
+		// start ctx can be timeout context that needs to be cancelled to stop the internal timer
+		startRes.node.runState.cancelStartCtx(startRes.err)
+	}
 
 	if startRes.err != nil {
 		return rs.handleNodeStartError(startRes)
@@ -318,7 +334,7 @@ func (rs *runnerSession) handleNodeStartError(startRes nodeErrResult) (done bool
 	rs.stats.remainingCloses--
 	startRes.node.runState.isWaitDone = lcNodePhaseDoneStateSkipped
 	rs.stats.remainingWaits--
-	rs.config.listeners.OnDone(startRes.node.lcNodeOwnInfo, startRes.err)
+	rs.config.runnerListeners.OnDone(startRes.node.lcNodeOwnInfo, startRes.err)
 	if done := rs.tryCloseNodeDependencies(startRes.node); done {
 		return true
 	}
@@ -326,7 +342,7 @@ func (rs *runnerSession) handleNodeStartError(startRes nodeErrResult) (done bool
 }
 
 func (rs *runnerSession) handleNodeIsReady(node *lcNode) (done bool) {
-	rs.config.listeners.OnReady(node.lcNodeOwnInfo)
+	rs.config.runnerListeners.OnReady(node.lcNodeOwnInfo)
 	rs.stats.remainingReadySignals--
 
 	// consider ready / start new nodes only if shutdown is not in progress
@@ -367,23 +383,48 @@ func (rs *runnerSession) tryStartNode(node *lcNode) (done bool) {
 			node.Tag(), node.runState.readyDeps, len(node.dependsOn)))
 	}
 
-	rs.config.listeners.OnStart(node.lcNodeOwnInfo)
+	rs.config.runnerListeners.OnStart(node.lcNodeOwnInfo)
 	if node.lcHook.starter == nil {
 		return rs.handleNodeStarted(nodeErrResult{node: node, err: nil}, lcNodePhaseDoneStateSkipped)
 	}
 
 	if _, isAsync := node.lcHook.starter.(trustedAsyncStarter); isAsync {
 		// don't start a goroutine if Start is guaranteed to be non-blocking
-		err := node.lcHook.starter.Start(rs.startingCtx)
+		err := node.lcHook.starter.Start(nil)
 		return rs.handleNodeStarted(nodeErrResult{node: node, err: err}, lcNodePhaseDoneStateCompleted)
 	}
 
 	node.runState.isStarting = true
+	var startCtx context.Context
+	startCtx, node.runState.cancelStartCtx = rs.getStartCtx(node)
 	go func() {
-		err := node.lcHook.starter.Start(rs.startingCtx)
+		err := node.lcHook.starter.Start(startCtx)
 		rs.startResults <- nodeErrResult{node: node, err: err}
 	}()
 	return false
+}
+
+func (rs *runnerSession) isNilRunResultAsError(node *lcNode) bool {
+	return rs.config.nilResultAsError || node.lcHook.waiterCfg.nilResultAsError
+}
+
+func (rs *runnerSession) getStartCtx(node *lcNode) (context.Context, context.CancelCauseFunc) {
+	var startTimeout time.Duration
+	if node.lcHook.starterCfg.startTimeout != 0 {
+		startTimeout = node.lcHook.starterCfg.startTimeout
+	} else {
+		startTimeout = rs.config.startTimeout
+	}
+	ctx, cancel := context.WithCancelCause(context.Background())
+	if startTimeout <= 0 {
+		return ctx, cancel
+	}
+
+	// no need to explicitly cancel timeoutCtx if it's cancelled by parent via cancel(), it would be no-op
+	// (internal timer is already stopped, and it has been removed from the parent context)
+	//goland:noinspection GoVetLostCancel
+	timeoutCtx, _ := context.WithTimeout(ctx, startTimeout)
+	return timeoutCtx, cancel
 }
 
 type lcNodesStats struct {

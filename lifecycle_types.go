@@ -42,7 +42,7 @@ type Runnable interface {
 	// - shut down gracefully and return `ctx.Err()` if `ctx` is canceled. context.Cause(ctx) can be used to
 	//   determine the cause of the shutdown.
 	// - return nil error if the component finishes successfully and doesn't want to trigger shutdown of other components.
-	//   This default can be overridden by RunnerOptShutDownOnNilRunResult option
+	//   This default can be overridden by OptNilRunResultAsError option
 	Run(ctx context.Context) error
 }
 
@@ -58,6 +58,6 @@ type ReadinessRunnable interface {
 	// - shut down gracefully and return `ctx.Err()` if `ctx` is canceled. context.Cause(ctx) can be used to
 	//   determine the cause of the shutdown.
 	// - return nil error if the component finishes successfully and doesn't want to trigger shutdown of other components.
-	//   This default can be overridden by RunnerOptShutDownOnNilRunResult option
+	//   This default can be overridden by OptNilRunResultAsError option
 	Run(ctx context.Context, onReady func()) error
 }

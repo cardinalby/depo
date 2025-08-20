@@ -71,11 +71,15 @@ func (reg *registry) AddCurrentlyResolvingNodeLifecycleHook(lcHookBuilder *lifec
 	reg.pendingNodes.AddLifecycleHookBuilder(node, lcHookBuilder)
 }
 
-func (reg *registry) GetCurrentlyResolvingDepId() dep.Id {
+func (reg *registry) GetCurrentlyResolvingNodeDepId() dep.Id {
 	if reg.nodeFrames.Stack().Len() == 0 {
 		return dep.Id(0) // no current dep
 	}
 	return reg.nodeFrames.Stack().Peek().GetDepNode().GetDepInfo().Id
+}
+
+func (reg *registry) SetCurrentlyResolvingNodeTag(tag any) {
+	reg.nodeFrames.Stack().Peek().GetDepNode().SetTag(tag)
 }
 
 // OnGetComponent calls `node.StartProviding()` tracking dependencies between components by maintaining

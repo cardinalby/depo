@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/cardinalby/depo/internal/signals"
+	"github.com/cardinalby/depo/pkg/contexts"
 	"github.com/stretchr/testify/require"
 )
 
@@ -435,7 +436,7 @@ func TestRunner_RunAllPhases(t *testing.T) {
 			return 8
 		})
 		listener = &runnerListenerMock{}
-		runnerOptions = append(runnerOptions, RunnerOptListeners(listener))
+		runnerOptions = append(runnerOptions, OptRunnerListeners(listener))
 		listener.ShouldBeCalledInCurrentGoroutineId()
 		r, err := NewRunnerE(func() error {
 			for _, rootIndex := range variant.rootsIndexes {
@@ -836,13 +837,13 @@ func TestRunner_RunAllPhases(t *testing.T) {
 		}
 	})
 
-	t.Run("wait returns nil on ready with RunnerOptShutDownOnNilRunResult()", func(t *testing.T) {
+	t.Run("wait returns nil on ready with OptNilRunResultAsError()", func(t *testing.T) {
 		t.Parallel()
 		for _, defsVariant := range defsVariants {
 			t.Run(fmt.Sprintf("variant %v", defsVariant), func(t *testing.T) {
 				t.Parallel()
 				synctest.Run(func() {
-					recs, runner, startOrderReq, listener := createDefs(defsVariant, RunnerOptShutDownOnNilRunResult())
+					recs, runner, startOrderReq, listener := createDefs(defsVariant, OptNilRunResultAsError())
 					ctx, cancel := context.WithCancel(context.Background())
 					defer cancel()
 					recs.setStartErr(nil)
@@ -865,12 +866,12 @@ func TestRunner_RunAllPhases(t *testing.T) {
 					var lifecycleHookFailedErr ErrLifecycleHookFailed
 					require.ErrorAs(t, err, &lifecycleHookFailedErr)
 					require.Equal(t, lifecycleHookFailedErr.LifecycleHook().Tag(), 3)
-					require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), errUnexpectedRunNilRunResult)
+					require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult)
 					isComponentFailedWithUnexpectedRunNilRunResultErr := func(err error, msgAndArgs []any) {
 						var componentFailedErr ErrLifecycleHookFailed
 						require.ErrorAs(t, err, &componentFailedErr, msgAndArgs...)
 						require.Equal(t, any(3), componentFailedErr.LifecycleHook().Tag(), msgAndArgs...)
-						require.ErrorIs(t, componentFailedErr.Unwrap(), errUnexpectedRunNilRunResult, msgAndArgs...)
+						require.ErrorIs(t, componentFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult, msgAndArgs...)
 					}
 					listener.requireErrors(
 						t,
@@ -880,7 +881,7 @@ func TestRunner_RunAllPhases(t *testing.T) {
 								"*": isComponentFailedWithUnexpectedRunNilRunResultErr,
 							},
 							runnerListenerMockEventTypeDone: errorRequirements{
-								3:   errUnexpectedRunNilRunResult,
+								3:   ErrUnexpectedRunNilRunResult,
 								"*": context.Canceled,
 							},
 							runnerListenerMockEventTypeShutdown: errorRequirements{
@@ -942,6 +943,7 @@ func TestRunner_RunPartialPhases(t *testing.T) {
 			UseLifecycle().
 				AddStarter(recs[0].starterMock).
 				Tag(recs[0].starterMock.tag)
+			UseTag("zero")
 			return 0
 		})
 		recs[1].getComponent = Provide(func() int {
@@ -981,7 +983,7 @@ func TestRunner_RunPartialPhases(t *testing.T) {
 				recs[rootIndex].getComponent()
 			}
 			return nil
-		})
+		}, OptRunnerListeners(listener))
 		return recs, r, listener
 	}
 
@@ -1000,6 +1002,9 @@ func TestRunner_RunPartialPhases(t *testing.T) {
 					go func() {
 						time.Sleep(time.Second)
 						require.Positive(t, recs[0].starterMock.enterEventId.Load())
+						listener.requireTagEvent(t, runnerListenerMockEventTypeStart, 0, func(event runnerListenerMockEvent) {
+							require.Equal(t, "zero", event.info.ComponentInfo().Tag())
+						})
 						require.Negative(t, recs[0].starterMock.exitEventId.Load())
 						require.Negative(t, recs[1].waiterMock.enterEventId.Load())
 						require.Negative(t, recs[3].starterMock.enterEventId.Load())
@@ -1383,7 +1388,7 @@ func TestRunner_RunWithNilContext(t *testing.T) {
 		r, _ := NewRunnerE(func() error {
 			def1()
 			return nil
-		}, RunnerOptListeners(listener))
+		}, OptRunnerListeners(listener))
 		var isOnReadyCalled atomic.Bool
 		var isRunDone atomic.Bool
 		go func() {
@@ -1409,8 +1414,326 @@ func TestRunner_RunWithNilContext(t *testing.T) {
 		require.True(t, isOnReadyCalled.Load())
 		require.ErrorIs(t, err, context.Canceled)
 		waitCtxDoneCause := *runnable.waiterMock.ctxDoneCause.Load()
-		var signalErr signals.ErrSignalReceived
+		var signalErr contexts.ErrSignalReceived
 		require.ErrorAs(t, waitCtxDoneCause, &signalErr)
 		require.Equal(t, syscall.SIGINT, signalErr.Signal)
+	})
+}
+
+func TestRunner_OptStartTimeout(t *testing.T) {
+	createDefs := func(
+		def0StartTimeout time.Duration,
+		def1StartTimeout time.Duration,
+		runnerStartTimeout time.Duration,
+	) (
+		recs testDefRecs,
+		r Runner,
+	) {
+		rec1readinessRunnableMock := newReadinessRunnableMock(1)
+		recs = testDefRecs{
+			{
+				i:           0,
+				starterMock: newStarterMock(0),
+			},
+			{
+				i:                 1,
+				readinessRunnable: rec1readinessRunnableMock,
+				starterMock:       rec1readinessRunnableMock.starterMock,
+				waiterMock:        rec1readinessRunnableMock.waiterMock,
+				closerMock:        rec1readinessRunnableMock.closerMock,
+			},
+		}
+		recs[0].getComponent = Provide(func() int {
+			var options []StarterOption
+			if def0StartTimeout > 0 {
+				options = append(options, OptStartTimeout(def0StartTimeout))
+			}
+			UseLifecycle().
+				AddStarter(recs[0].starterMock, options...).
+				Tag(recs[0].starterMock.tag)
+			return 0
+		})
+		recs[1].getComponent = Provide(func() int {
+			var options []ReadinessRunnableOption
+			if def1StartTimeout > 0 {
+				options = append(options, OptStartTimeout(def1StartTimeout))
+			}
+			UseLifecycle().
+				AddReadinessRunnable(recs[1].readinessRunnable, options...).
+				Tag(recs[1].starterMock.tag)
+			return 1
+		})
+		var runnerOptions []RunnerOption
+		if runnerStartTimeout > 0 {
+			runnerOptions = append(runnerOptions, OptStartTimeout(runnerStartTimeout))
+		}
+		r = NewRunner(func() {
+			recs[0].getComponent()
+			recs[1].getComponent()
+		}, runnerOptions...)
+		return recs, r
+	}
+
+	t.Run("global OptStartTimeout", func(t *testing.T) {
+		t.Cleanup(testsCleanup)
+		synctest.Run(func() {
+			recs, runner := createDefs(0, 0, time.Second)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			recs.setStartErr(nil, time.Second*2)
+			recs.triggerWaitErrOnClose(context.Canceled)
+			onReady := func() {
+				require.Fail(t, "onReady should not be called")
+			}
+			err := runner.Run(ctx, onReady)
+			require.True(
+				t,
+				errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded),
+				"err: %v",
+				err,
+			)
+		})
+	})
+
+	t.Run("def0 OptStartTimeout", func(t *testing.T) {
+		t.Cleanup(testsCleanup)
+		synctest.Run(func() {
+			recs, runner := createDefs(time.Second, 0, 0)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			recs.setStartErr(nil, time.Second*2)
+			recs.triggerWaitErrOnClose(context.Canceled)
+			onReady := func() {
+				require.Fail(t, "onReady should not be called")
+			}
+			err := runner.Run(ctx, onReady)
+			var lifecycleHookFailedErr ErrLifecycleHookFailed
+			require.ErrorAs(t, err, &lifecycleHookFailedErr)
+			require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
+			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), context.DeadlineExceeded)
+
+			rec0Err := *recs[0].starterMock.ctxDoneCause.Load()
+			require.ErrorIs(t, rec0Err, context.DeadlineExceeded)
+
+			rec1err := *recs[1].starterMock.ctxDoneCause.Load()
+			require.ErrorAs(t, rec1err, &lifecycleHookFailedErr)
+			require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
+			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), context.DeadlineExceeded)
+		})
+	})
+
+	t.Run("def1 OptStartTimeout", func(t *testing.T) {
+		t.Cleanup(testsCleanup)
+		synctest.Run(func() {
+			recs, runner := createDefs(0, time.Second, 0)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			recs.setStartErr(nil, time.Second*2)
+			recs.triggerWaitErrOnClose(context.Canceled)
+			onReady := func() {
+				require.Fail(t, "onReady should not be called")
+			}
+			err := runner.Run(ctx, onReady)
+			var lifecycleHookFailedErr ErrLifecycleHookFailed
+			require.ErrorAs(t, err, &lifecycleHookFailedErr)
+			require.Equal(t, any(1), lifecycleHookFailedErr.LifecycleHook().Tag())
+			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), context.Canceled)
+
+			rec0Err := *recs[0].starterMock.ctxDoneCause.Load()
+			require.ErrorAs(t, rec0Err, &lifecycleHookFailedErr)
+			require.Equal(t, any(1), lifecycleHookFailedErr.LifecycleHook().Tag())
+			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), context.Canceled)
+
+			rec1Err := *recs[1].starterMock.ctxDoneCause.Load()
+			require.ErrorIs(t, rec1Err, context.DeadlineExceeded)
+		})
+	})
+
+	t.Run("def0 and runner OptStartTimeout", func(t *testing.T) {
+		t.Cleanup(testsCleanup)
+		synctest.Run(func() {
+			recs, runner := createDefs(time.Second*2, time.Second*3, time.Second)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			recs.setStartErr(nil, time.Second*4)
+			recs.triggerWaitErrOnClose(context.Canceled)
+			onReady := func() {
+				require.Fail(t, "onReady should not be called")
+			}
+			var isRunnerDone atomic.Bool
+			go func() {
+				time.Sleep(1100 * time.Millisecond)
+				require.False(t, isRunnerDone.Load())
+				time.Sleep(time.Second)
+				require.True(t, isRunnerDone.Load())
+			}()
+			err := runner.Run(ctx, onReady)
+			isRunnerDone.Store(true)
+			var lifecycleHookFailedErr ErrLifecycleHookFailed
+			require.ErrorAs(t, err, &lifecycleHookFailedErr)
+			require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
+			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), context.DeadlineExceeded)
+
+			rec0Err := *recs[0].starterMock.ctxDoneCause.Load()
+			require.ErrorIs(t, rec0Err, context.DeadlineExceeded)
+
+			rec1err := *recs[1].starterMock.ctxDoneCause.Load()
+			require.ErrorAs(t, rec1err, &lifecycleHookFailedErr)
+			require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
+			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), context.DeadlineExceeded)
+		})
+	})
+}
+
+func TestRunner_OptNilRunResultAsError(t *testing.T) {
+	createDefs := func(
+		isDef0NilRunResultAsError bool,
+		isDef1NilRunResultAsError bool,
+		isRunnerNilRunResultAsError bool,
+	) (
+		recs testDefRecs,
+		r Runner,
+	) {
+		rec0RunnableMock := newRunnableMock(0)
+		rec1readinessRunnableMock := newReadinessRunnableMock(1)
+		recs = testDefRecs{
+			{
+				i:           0,
+				runnable:    rec0RunnableMock,
+				starterMock: rec0RunnableMock.starterMock,
+				waiterMock:  rec0RunnableMock.waiterMock,
+				closerMock:  rec0RunnableMock.closerMock,
+			},
+			{
+				i:                 1,
+				readinessRunnable: rec1readinessRunnableMock,
+				starterMock:       rec1readinessRunnableMock.starterMock,
+				waiterMock:        rec1readinessRunnableMock.waiterMock,
+				closerMock:        rec1readinessRunnableMock.closerMock,
+			},
+		}
+		recs[0].getComponent = Provide(func() int {
+			var options []RunnableOption
+			if isDef0NilRunResultAsError {
+				options = append(options, OptNilRunResultAsError())
+			}
+			UseLifecycle().
+				AddRunnable(recs[0].runnable, options...).
+				Tag(recs[0].starterMock.tag)
+			return 0
+		})
+		recs[1].getComponent = Provide(func() int {
+			var options []ReadinessRunnableOption
+			if isDef1NilRunResultAsError {
+				options = append(options, OptNilRunResultAsError())
+			}
+			UseLifecycle().
+				AddReadinessRunnable(recs[1].readinessRunnable, options...).
+				Tag(recs[1].starterMock.tag)
+			return 1
+		})
+		var runnerOptions []RunnerOption
+		if isRunnerNilRunResultAsError {
+			runnerOptions = append(runnerOptions, OptNilRunResultAsError())
+		}
+		r = NewRunner(func() {
+			recs[0].getComponent()
+			recs[1].getComponent()
+		}, runnerOptions...)
+		return recs, r
+	}
+
+	t.Run("global OptNilRunResultAsError", func(t *testing.T) {
+		t.Cleanup(testsCleanup)
+		synctest.Run(func() {
+			recs, runner := createDefs(false, false, true)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			recs.setStartErr(nil, time.Second)
+			var isOnReadyCalled atomic.Bool
+			var isRunnerDone atomic.Bool
+			onReady := func() {
+				isOnReadyCalled.Store(true)
+				go func() {
+					recs[0].waiterMock.errChan <- nil
+					time.Sleep(time.Second)
+					recs[1].closerMock.errChan <- nil
+					time.Sleep(time.Second)
+					require.True(t, isRunnerDone.Load())
+				}()
+			}
+			err := runner.Run(ctx, onReady)
+			require.True(t, isOnReadyCalled.Load())
+			isRunnerDone.Store(true)
+			var lifecycleHookFailedErr ErrLifecycleHookFailed
+			require.ErrorAs(t, err, &lifecycleHookFailedErr)
+			require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
+			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult)
+			require.ErrorAs(t, *recs[1].waiterMock.ctxDoneCause.Load(), &lifecycleHookFailedErr)
+			require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
+			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult)
+		})
+	})
+
+	t.Run("def0 OptNilRunResultAsError", func(t *testing.T) {
+		t.Run("def0 returns nil", func(t *testing.T) {
+			t.Cleanup(testsCleanup)
+			synctest.Run(func() {
+				recs, runner := createDefs(true, false, false)
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				recs.setStartErr(nil, time.Second)
+				var isOnReadyCalled atomic.Bool
+				var isRunnerDone atomic.Bool
+				onReady := func() {
+					isOnReadyCalled.Store(true)
+					go func() {
+						recs[0].waiterMock.errChan <- nil
+						time.Sleep(time.Second)
+						recs[1].closerMock.errChan <- nil
+						time.Sleep(time.Second)
+						require.True(t, isRunnerDone.Load())
+					}()
+				}
+				err := runner.Run(ctx, onReady)
+				require.True(t, isOnReadyCalled.Load())
+				isRunnerDone.Store(true)
+				var lifecycleHookFailedErr ErrLifecycleHookFailed
+				require.ErrorAs(t, err, &lifecycleHookFailedErr)
+				require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
+				require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult)
+				require.ErrorAs(t, *recs[1].waiterMock.ctxDoneCause.Load(), &lifecycleHookFailedErr)
+				require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
+				require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult)
+			})
+		})
+
+		t.Run("def1 returns nil", func(t *testing.T) {
+			t.Cleanup(testsCleanup)
+			synctest.Run(func() {
+				recs, runner := createDefs(true, false, false)
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				recs.setStartErr(nil, time.Second)
+				var isOnReadyCalled atomic.Bool
+				var isRunnerDone atomic.Bool
+				onReady := func() {
+					isOnReadyCalled.Store(true)
+					go func() {
+						recs[1].waiterMock.errChan <- nil
+						time.Sleep(time.Second)
+						recs[0:1].triggerWaitErrOnClose(context.Canceled)
+						time.Sleep(time.Second)
+						require.False(t, isRunnerDone.Load())
+						cancel()
+						time.Sleep(time.Second)
+						require.True(t, isRunnerDone.Load())
+					}()
+				}
+				err := runner.Run(ctx, onReady)
+				isRunnerDone.Store(true)
+				require.ErrorIs(t, err, ctx.Err())
+			})
+		})
 	})
 }
