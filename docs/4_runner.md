@@ -13,13 +13,15 @@ Imagine the following simple application:
     <img align="center" src="assets/runner/runner.svg" alt="application graph"/>
 </p>
 
-The purpose of the application is to receive HTTP requests and process messages from a message queue.
+The **purpose** of the application is to **receive HTTP** requests and **process messages** from a message **queue**.
 
-You have defined all the components with their dependencies and lifecycle hooks and now what you **want at 
-high level** is to spin up "HTTP Srv" and "Msg Queue Consumer" and make **depo** take care of constructing
-dependencies and managing their lifecycles for you.
+You have defined all the components with their dependencies and lifecycle hooks. Now you want the application
+to fulfill its purpose.
 
-You need to create a `Runner` in a way similar to other components by requesting these root components:
+🤔 That's the way **depo** encourages you to think: just requre _"HTTP Srv"_ and _"Msg Queue Consumer"_ to be running
+and make **depo** take care of constructing dependencies and managing their lifecycles for you.
+
+You need to create a `Runner` in a way similar to other components by requesting these **root** components:
 
 ```go
 
@@ -82,17 +84,17 @@ Check out the **demo web page** (based on WebAssembly-compiled example applicati
 On the page you can click on any component to assign it a start error or make it return `Run` error.
 
 <details>
-<summary>Full application lifecycle</summary>
+<summary>🔹 Full application lifecycle</summary>
     <img align="center" src="assets/runner/full_lc.gif"/>
 </details>
 
 <details>
-<summary>A component fails to Start</summary>
+<summary>🔹 A component fails to Start</summary>
     <img align="center" src="assets/runner/start_err.gif"/>
 </details>
 
 <details>
-<summary>Component's Run method returns an error</summary>
+<summary>🔹 Component's Run method returns an error</summary>
     <img align="center" src="assets/runner/wait_err.gif"/>
 </details>
 
