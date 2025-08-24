@@ -1737,3 +1737,24 @@ func TestRunner_OptNilRunResultAsError(t *testing.T) {
 		})
 	})
 }
+
+func TestRunner_Run_SingleStarter(t *testing.T) {
+	testErr := errors.New("test error")
+	a := Provide(func() int {
+		UseTag("tagA")
+		UseLifecycle().AddStartFn(func(ctx context.Context) error {
+			return testErr
+		}).Tag("lcA")
+		return 1
+	})
+
+	runner := NewRunner(func() {
+		a()
+	})
+	runnerErr := runner.Run(context.Background(), nil)
+	var lifecycleHookFailedErr ErrLifecycleHookFailed
+	require.ErrorAs(t, runnerErr, &lifecycleHookFailedErr)
+	require.Equal(t, "tagA", lifecycleHookFailedErr.LifecycleHook().ComponentInfo().Tag())
+	require.Equal(t, "lcA", lifecycleHookFailedErr.LifecycleHook().Tag())
+	require.Equal(t, testErr, lifecycleHookFailedErr.Unwrap())
+}

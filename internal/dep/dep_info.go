@@ -60,7 +60,7 @@ func (d Info) String() string {
 	sb.WriteString("(")
 	sb.WriteString(d.Id.String())
 	if d.tag != nil {
-		sb.WriteString(fmt.Sprintf(" tag: %v", d.tag))
+		sb.WriteString(fmt.Sprintf(", tag: %v", d.tag))
 	}
 	sb.WriteString(") ")
 	if d.valueType != nil {

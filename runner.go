@@ -16,13 +16,6 @@ type LifecycleHookNode interface {
 	DependsOnHooks() []LifecycleHookNode
 }
 
-// ComponentInfo is information about a component registered using Provide or ProvideE functions
-type ComponentInfo interface {
-	Value() any
-	ID() uint64
-	Tag() any
-}
-
 // Runner is a lifecycle manager that runs and closes components' lifecycle hooks in the correct order
 // according to the dependency graph of the components.
 type Runner interface {

@@ -8,7 +8,15 @@ type LifecycleHookInfo interface {
 	Tag() any
 }
 
-// RunnerListener is an interface for listening to events of LifecycleHooks managed by a Runner
+// ComponentInfo is information about a component registered using Provide or ProvideE functions
+type ComponentInfo interface {
+	Value() any
+	ID() uint64
+	Tag() any
+}
+
+// RunnerListener is an interface for listening to events of LifecycleHooks managed by a Runner.
+// All methods will be called by Runner in the same goroutine.
 type RunnerListener interface {
 	// OnStart is called when the Runner starts a LifecycleHookInfo (corresponds Starter.Start,
 	// Runnable.Run, ReadinessRunnable.Run methods)

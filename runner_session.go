@@ -33,6 +33,9 @@ func newRunnerSession(
 	onReady func(),
 	config runnerCfg,
 ) runnerSession {
+	if onReady == nil {
+		onReady = func() {}
+	}
 	return runnerSession{
 		graph:        graph,
 		config:       config,
@@ -49,6 +52,11 @@ func (rs *runnerSession) run(ctx context.Context) error {
 		return ctx.Err()
 	}
 
+	if len(rs.graph.leafs) == 0 {
+		rs.onReady()
+		return nil
+	}
+
 	for _, node := range rs.graph.leafs {
 		if done := rs.tryStartNode(node); done {
 			return rs.shutdownErr
@@ -62,7 +70,7 @@ func (rs *runnerSession) loop(ctx context.Context) error {
 	for {
 		select {
 		case startRes := <-rs.startResults:
-			if done := rs.handleNodeStarted(startRes, lcNodePhaseDoneStateCompleted); done {
+			if done := rs.handleNodeStartResult(startRes, lcNodePhaseDoneStateCompleted); done {
 				return rs.shutdownErr
 			}
 
@@ -91,7 +99,7 @@ func (rs *runnerSession) loopAfterCtxDone() error {
 	for {
 		select {
 		case startRes := <-rs.startResults:
-			if done := rs.handleNodeStarted(startRes, lcNodePhaseDoneStateCompleted); done {
+			if done := rs.handleNodeStartResult(startRes, lcNodePhaseDoneStateCompleted); done {
 				return rs.shutdownErr
 			}
 
@@ -214,7 +222,6 @@ func (rs *runnerSession) tryShutDown(err error, cause error) (done bool) {
 }
 
 func (rs *runnerSession) interruptStarts(cause error) {
-	fmt.Printf("Interrupting starts with cause: %v\n", cause)
 	var interruptNodeStart func(node *lcNode)
 	interruptNodeStart = func(node *lcNode) {
 		if node.runState.cancelStartCtx != nil {
@@ -285,7 +292,7 @@ func (rs *runnerSession) tryWaitForNode(node *lcNode) (done bool) {
 	return false
 }
 
-func (rs *runnerSession) handleNodeStarted(startRes nodeErrResult, doneState lcNodePhaseDoneState) (done bool) {
+func (rs *runnerSession) handleNodeStartResult(startRes nodeErrResult, doneState lcNodePhaseDoneState) (done bool) {
 	//goland:noinspection GoBoolExpressions
 	if tests.IsTestingBuild && startRes.node.runState.readyDeps != len(startRes.node.dependsOn) {
 		panic(fmt.Sprintf("node %v started with %d ready deps but has %d dependencies",
@@ -323,7 +330,7 @@ func (rs *runnerSession) handleNodeStarted(startRes nodeErrResult, doneState lcN
 func (rs *runnerSession) handleNodeStartError(startRes nodeErrResult) (done bool) {
 	//goland:noinspection GoBoolExpressions
 	if tests.IsTestingBuild && startRes.node.lcHook.starter == nil {
-		panic(fmt.Sprintf("handleNodeStarted(%v) with err with no starterMock", startRes.node.Tag()))
+		panic(fmt.Sprintf("handleNodeStartResult(%v) with err with no starterMock", startRes.node.Tag()))
 	}
 	// Increment done counters for its dependencies to unblock their shutdown
 	rs.stats.onNodeDependenciesHaveDoneDependent(startRes.node)
@@ -335,10 +342,10 @@ func (rs *runnerSession) handleNodeStartError(startRes nodeErrResult) (done bool
 	startRes.node.runState.isWaitDone = lcNodePhaseDoneStateSkipped
 	rs.stats.remainingWaits--
 	rs.config.runnerListeners.OnDone(startRes.node.lcNodeOwnInfo, startRes.err)
-	if done := rs.tryCloseNodeDependencies(startRes.node); done {
+	if done := rs.tryShutDown(startRes.err, startRes.err); done {
 		return true
 	}
-	return rs.tryShutDown(startRes.err, startRes.err)
+	return rs.tryCloseNodeDependencies(startRes.node)
 }
 
 func (rs *runnerSession) handleNodeIsReady(node *lcNode) (done bool) {
@@ -348,9 +355,7 @@ func (rs *runnerSession) handleNodeIsReady(node *lcNode) (done bool) {
 	// consider ready / start new nodes only if shutdown is not in progress
 	if rs.shutdownErr == nil {
 		if rs.stats.remainingReadySignals == 0 {
-			if rs.onReady != nil {
-				rs.onReady()
-			}
+			rs.onReady()
 			// don't need to start new nodes if all nodes are ready
 		} else {
 			for _, dependent := range node.dependents {
@@ -385,13 +390,13 @@ func (rs *runnerSession) tryStartNode(node *lcNode) (done bool) {
 
 	rs.config.runnerListeners.OnStart(node.lcNodeOwnInfo)
 	if node.lcHook.starter == nil {
-		return rs.handleNodeStarted(nodeErrResult{node: node, err: nil}, lcNodePhaseDoneStateSkipped)
+		return rs.handleNodeStartResult(nodeErrResult{node: node, err: nil}, lcNodePhaseDoneStateSkipped)
 	}
 
 	if _, isAsync := node.lcHook.starter.(trustedAsyncStarter); isAsync {
 		// don't start a goroutine if Start is guaranteed to be non-blocking
 		err := node.lcHook.starter.Start(nil)
-		return rs.handleNodeStarted(nodeErrResult{node: node, err: err}, lcNodePhaseDoneStateCompleted)
+		return rs.handleNodeStartResult(nodeErrResult{node: node, err: err}, lcNodePhaseDoneStateCompleted)
 	}
 
 	node.runState.isStarting = true

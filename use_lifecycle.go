@@ -71,7 +71,7 @@ type LifecycleHookBuilder interface {
 
 // UseLifecycle should be called inside `provider` callback to set up currently providing component's
 // lifecycle behavior using LifecycleHookBuilder methods.
-// You can call UseLifecycle multiple times inside one provider adding multiple lifecycle hooks,
+// You can call UseLifecycle multiple times inside one `provide` function adding multiple lifecycle hooks,
 // they will act as independent instances that have the same set of dependencies and dependents.
 // Note that using two separate UseLifecycle with Add... calls is not equivalent to using
 // one UseLifecycle with multiple Add... calls
