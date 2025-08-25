@@ -246,7 +246,7 @@ func (rs *runnerSession) handleNodeWaited(waitRes nodeErrResult, doneState lcNod
 			panic(fmt.Sprintf("handleNodeWaited(%v) with no waiter", waitRes.node.Tag()))
 		}
 		if waitRes.err == nil && rs.isNilRunResultAsError(waitRes.node) {
-			waitRes.err = ErrUnexpectedRunNilRunResult
+			waitRes.err = ErrUnexpectedRunNilResult
 		}
 		if !waitRes.node.runState.isClosing && waitRes.node.runState.isCloseDone == lcNodePhaseDoneStateNone {
 			waitRes.node.runState.isCloseDone = lcNodePhaseDoneStateSkipped

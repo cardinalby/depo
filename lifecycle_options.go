@@ -98,7 +98,7 @@ func (o optNilRunResultAsError) applyToRunnerCfg(cfg *runnerCfg) {
 
 // OptNilRunResultAsError can be used to modify the default Runner behavior of handling nil results received from
 // Run() method of Runnable / ReadinessRunnable component. If set, nil Run result will be considered an error and
-// will trigger shutdown with ErrUnexpectedRunNilRunResult.
+// will trigger shutdown with ErrUnexpectedRunNilResult.
 // If passed to AddRunnable() / AddReadinessRunnable() method of UseLifecycle() it will affect only that single
 // Runnable / ReadinessRunnable.
 // If passed to NewRunner() it will affect all Runnable / ReadinessRunnable components

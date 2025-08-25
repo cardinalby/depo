@@ -19,7 +19,7 @@ type LifecycleHookNode interface {
 // Runner is a lifecycle manager that runs and closes components' lifecycle hooks in the correct order
 // according to the dependency graph of the components.
 type Runner interface {
-	// Run starts all the components in the proper order (starting from the leafs) and returns when all
+	// Run starts all the components in the proper order (starting from the leaves) and returns when all
 	// components are done. `onReady` is called when all components are ready.
 	// If the context is canceled, the runner will stop all components in the proper order (starting from
 	// the roots) and return context.Canceled.

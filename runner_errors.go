@@ -62,6 +62,6 @@ func (e errLifecycleHookFailed) Unwrap() error {
 	return e.err
 }
 
-// ErrUnexpectedRunNilRunResult is returned from Runner.Run if the Run result is nil
+// ErrUnexpectedRunNilResult is returned from Runner.Run if the Run result is nil
 // and OptNilRunResultAsError option is set
-var ErrUnexpectedRunNilRunResult = errors.New("unexpected Run nil result")
+var ErrUnexpectedRunNilResult = errors.New("unexpected Run nil result")

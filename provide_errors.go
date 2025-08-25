@@ -69,7 +69,7 @@ type errDepRegFailed struct {
 	formatForPanicking bool
 }
 
-// newErrDepRegFailedWithPanic creates a new errFramePanic instance from the panic value.
+// newErrDepRegFailedWithPanic creates a new errDepRegFailed from a panic value.
 // `callerLevel` is the level of closest user code callerCtxs frame relative to the callerCtxs of this function
 // `frameBoundary` is CallerCtx of the library internal function that started the frame
 func newErrDepRegFailedWithPanic(

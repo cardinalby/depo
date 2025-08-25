@@ -19,7 +19,7 @@ func newErrNilLateInit() error {
 //     been already initialized at this point
 //
 // UseLateInit resolves only construction time cyclic dependencies,
-// not the once between lifecycle-aware components (see UseLifecycle)
+// not the ones between lifecycle-aware components (see UseLifecycle)
 func UseLateInit(lateInitFn func()) {
 	if lateInitFn == nil {
 		panic(newErrNilLateInit())

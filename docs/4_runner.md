@@ -18,7 +18,7 @@ The **purpose** of the application is to **receive HTTP** requests and **process
 You have defined all the components with their dependencies and lifecycle hooks. Now you want the application
 to fulfill its purpose.
 
-🤔 That's the way **depo** encourages you to think: just requre _"HTTP Srv"_ and _"Msg Queue Consumer"_ to be running
+That's the way **depo** encourages you to think: just require _"HTTP Srv"_ and _"Msg Queue Consumer"_ to be running
 and make **depo** take care of constructing dependencies and managing their lifecycles for you.
 
 You need to create a `Runner` in a way similar to other components by requesting these **root** components:
@@ -108,7 +108,7 @@ On the page you can click on any component to assign it a start error or make it
 `Starter` or `ReadinessRunnable` lifecycle hooks (if they haven't specified this option by themselves).
 
 - A context with the timeout will be passed to `Start` methods
-- Context passed to `Run` methods will be cancelled with `context.DeadlineExceeded` cause error if `ReadinessRunner`
+- Context passed to `Run` methods will be cancelled with `context.DeadlineExceeded` cause error if `ReadinessRunnable`
   hasn't called `onReady` callback before the timeout
 
 ### 🔹 OptNilRunResultAsError()
@@ -116,8 +116,8 @@ On the page you can click on any component to assign it a start error or make it
 By default, `nil` error returned by `Runnable` or `ReadinessRunnable` components is treated as a successful 
 completion and doesn't trigger shutdown of other components.
 
-This options changes this behavior for all such components. After receiving `nil` error from `Run` method, the Runner
-will trigger shutdown with `ErrUnexpectedRunNilRunResult` cause.
+The option changes this behavior for all such components. After receiving `nil` error from `Run` method, the Runner
+will trigger shutdown with `ErrUnexpectedRunNilResult` cause.
 
 ### 🔹 OptRunnerListeners(...)
 

@@ -866,12 +866,12 @@ func TestRunner_RunAllPhases(t *testing.T) {
 					var lifecycleHookFailedErr ErrLifecycleHookFailed
 					require.ErrorAs(t, err, &lifecycleHookFailedErr)
 					require.Equal(t, lifecycleHookFailedErr.LifecycleHook().Tag(), 3)
-					require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult)
+					require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilResult)
 					isComponentFailedWithUnexpectedRunNilRunResultErr := func(err error, msgAndArgs []any) {
 						var componentFailedErr ErrLifecycleHookFailed
 						require.ErrorAs(t, err, &componentFailedErr, msgAndArgs...)
 						require.Equal(t, any(3), componentFailedErr.LifecycleHook().Tag(), msgAndArgs...)
-						require.ErrorIs(t, componentFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult, msgAndArgs...)
+						require.ErrorIs(t, componentFailedErr.Unwrap(), ErrUnexpectedRunNilResult, msgAndArgs...)
 					}
 					listener.requireErrors(
 						t,
@@ -881,7 +881,7 @@ func TestRunner_RunAllPhases(t *testing.T) {
 								"*": isComponentFailedWithUnexpectedRunNilRunResultErr,
 							},
 							runnerListenerMockEventTypeDone: errorRequirements{
-								3:   ErrUnexpectedRunNilRunResult,
+								3:   ErrUnexpectedRunNilResult,
 								"*": context.Canceled,
 							},
 							runnerListenerMockEventTypeShutdown: errorRequirements{
@@ -1668,10 +1668,10 @@ func TestRunner_OptNilRunResultAsError(t *testing.T) {
 			var lifecycleHookFailedErr ErrLifecycleHookFailed
 			require.ErrorAs(t, err, &lifecycleHookFailedErr)
 			require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
-			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult)
+			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilResult)
 			require.ErrorAs(t, *recs[1].waiterMock.ctxDoneCause.Load(), &lifecycleHookFailedErr)
 			require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
-			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult)
+			require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilResult)
 		})
 	})
 
@@ -1701,10 +1701,10 @@ func TestRunner_OptNilRunResultAsError(t *testing.T) {
 				var lifecycleHookFailedErr ErrLifecycleHookFailed
 				require.ErrorAs(t, err, &lifecycleHookFailedErr)
 				require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
-				require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult)
+				require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilResult)
 				require.ErrorAs(t, *recs[1].waiterMock.ctxDoneCause.Load(), &lifecycleHookFailedErr)
 				require.Equal(t, any(0), lifecycleHookFailedErr.LifecycleHook().Tag())
-				require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilRunResult)
+				require.ErrorIs(t, lifecycleHookFailedErr.Unwrap(), ErrUnexpectedRunNilResult)
 			})
 		})
 

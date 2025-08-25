@@ -4,14 +4,14 @@ The library provides some observability utilities for the cases when you need to
 
 > To observe `Runner` behavior, use the `OptRunnerListeners()` option passed to `NewRunner()`
 
-## 🔹 [`UseComponentId() uint64`](https://pkg.go.dev/github.com/cardinalby/depo#UseComponentID)
+## 🔹 [`UseComponentID() uint64`](https://pkg.go.dev/github.com/cardinalby/depo#UseComponentID)
 
 Each component has an internal unique `uint64` ID that can be observed in
 [`RunnerListener`](https://pkg.go.dev/github.com/cardinalby/depo#RunnerListener) calls and 
 in [`ErrLifecycleHookFailed`](https://pkg.go.dev/github.com/cardinalby/depo#ErrLifecycleHookFailed) error.
 
 Being inside a [`provide`](1_basics.md) function, you can obtain it by calling 
-`depo.UseComponentId()` ([EX1](assets/debug_info/ex_test.go)):
+`depo.UseComponentID()` ([EX1](assets/debug_info/ex_test.go)):
 
 ```go
 a := depo.Provide(func() *ComponentA {

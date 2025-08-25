@@ -6,7 +6,7 @@ import (
 )
 
 // ErrCyclicDependency is thrown in panic from provide function (returned by Provide, ProvideE)
-// when a cyclic dependency is detected in `provide` function calls (when Defs call each other
+// when a cyclic dependency is detected in `provide` function calls (when components call each other
 // in a cycle). UseLateInit can be used to resolve cyclic dependencies in this case.
 // Also, it's returned from NewRunnerE call if cyclic dependency between lifecycle-aware components is detected
 // (proper start/shutdown order cannot be determined)
@@ -51,7 +51,7 @@ func Provide[T any](
 // constructing a component). It supports returning an error from the `provide` function to avoid panics.
 // Once called, `getComponent` tracks calls to other `getComponent` functions internally building
 // the dependency graph.
-// If is called inside another `provide` function and returns error, the connection in the graph will not be
+// If it is called inside another `provide` function and returns error, the connection in the graph will not be
 // established, and the error can be ignored by the caller if it can do without this dependency.
 // In case of cyclic dependencies, it returns ErrCyclicDependency
 func ProvideE[T any](

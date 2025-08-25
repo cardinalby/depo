@@ -41,7 +41,7 @@ from traditional DI features like:
     <img align="center" src="docs/assets/runner/wait_err.gif"/>
 </details>
 
-Since the library builds the dependency graph, manage the entire application lifecycle with `Runner` that can start and 
+Since the library builds the dependency graph, it manages the entire application lifecycle with `Runner` that can start and 
 shut down components in the proper order **concurrently** when possible, speeding up your starts and shutdowns.
 `SIGINT/SIGTERM` [shutdown context](/pkg/contexts/shutdown_context.go) is supported out of the box.
 

@@ -5,7 +5,7 @@ import "fmt"
 // UsePtrLateInit is a helper for UseLateInit that allows you to provide a pointer to a value
 // that will be initialized later. Other dependencies will receive a pointer to an empty object first, then a new
 // *T object will be created by `providePtr` function and its value will be copied into the empty object.
-// It allows you to keep the familiar NewSomething() *T constructors pattern if your objects are copyable.
+// It allows using the familiar NewSomething() *T constructor pattern, but requires T to be a copyable object.
 func UsePtrLateInit[T any](providePtr func() *T) *T {
 	if providePtr == nil {
 		panic(fmt.Errorf("%w providePtr", errNilValue))

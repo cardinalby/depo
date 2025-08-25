@@ -51,7 +51,7 @@ Resulting `a`, `b`, and `c` functions are **providers** that
 Internal tracking of dependencies is needed to build a **dependency graph** for proper start/shutdown order
 of components managed by `Runner`.
 
-➡️ [Components` lifecycle](./3_lifecycle.md)
+➡️ [Components' lifecycle](./3_lifecycle.md)
 
 The **tracking** is based on the **call stack** inspection which brings us to the main **limitation** of the library:
 
@@ -177,7 +177,7 @@ It's an example of how you can combine [`Provide`](https://pkg.go.dev/github.com
 
 When you have **circular dependencies** between your components, 
 [`ErrCyclicDependency`](https://pkg.go.dev/github.com/cardinalby/depo#ErrCyclicDependency) occurs at the call
-of a provider that is being constructed (from a "provide" function of one of its dependencies).
+of a provider that is being constructed (from a `provide` function of one of its dependencies).
 
 - In case of `Provide`, the error is thrown in **panic**
 - In case of `ProvideE`, the **error is returned** and can be ignored as in the example above

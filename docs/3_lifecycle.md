@@ -187,14 +187,16 @@ a := depo.Provide(func() *ComponentA {
 > There is also `AddRunFn()` method that accepts just a `Run` function for the cases the component itself
 > doesn't implement `Runnable` interface
 
-`AddRunnable` / `AddRunFn` can't be chained with other methods that add lifecycle behavior
+`AddRunnable` / `AddRunFn` can't be chained with other methods that add lifecycle behavior.
 
-#### ✔️ OptNilRunResultAsError()
+<details>
+<summary>✔️ OptNilRunResultAsError()</summary>
 
 You can pass optional `OptNilRunResultAsError()` argument to `AddRunnable` / `AddRunFn` to treat `nil` result of 
-`Run` method as an error that will trigger shutdown of other components
+`Run` method as an error that will trigger shutdown of other components with `ErrUnexpectedRunNilRunResult` cause.
 
 The same option can be applied to all `Runnable` / `ReadinessRunnable` components if passed to `NewRunner()`
+</details>
 
 ### 🔹 `AddReadinessRunnable`
 
@@ -232,32 +234,6 @@ treat `nil` result of `Run` method as an error that will trigger shutdown of oth
 The same option can be applied to all `Runnable` / `ReadinessRunnable` components if passed to `NewRunner()`
 </details>
 
-### 🔹 `AddRunnable`
-
-```go
-a := depo.Provide(func() *ComponentA {
-    componentA := NewComponentA("AA")
-    // componentA should implement Runnable
-    depo.UseLifecycle().AddRunnable(componentA)
-    return componentA
-})
-```
-
-> [!TIP]
-> There is also `AddRunFn()` method that accepts just a `Run` function for the cases the component itself
-> doesn't implement `Runnable` interface
-
-`AddRunnable` / `AddRunFn` can't be chained with other methods that add lifecycle behavior.
-
-<details>
-<summary>✔️ OptNilRunResultAsError()</summary>
-
-You can pass optional `OptNilRunResultAsError()` argument to `AddRunnable` / `AddRunFn` to treat `nil` result of
-`Run` method as an error that will trigger shutdown of other components with `ErrUnexpectedRunNilRunResult` cause.
-
-The same option can be applied to all `Runnable` / `ReadinessRunnable` components if passed to `NewRunner()`
-</details>
-
 ## Multiple Lifecycle Hooks
 
 Even though that is not normally needed, you can call `depo.UseLifecycle()` multiple times, creating multiple lifecycle hooks 
@@ -273,8 +249,8 @@ in [`ErrLifecycleHookFailed`](https://pkg.go.dev/github.com/cardinalby/depo#ErrL
 ```go
 a := depo.Provide(func() *ComponentA {
     componentA := NewComponentA("AA")
-    depo.UseLifecycle().AddCloser(func () { ... }).AddTag("tag1")
-    depo.UseLifecycle().AddCloser(func () { ... }).AddTag("tag2")
+    depo.UseLifecycle().AddCloser(func () { ... }).Tag("tag1")
+    depo.UseLifecycle().AddCloser(func () { ... }).Tag("tag2")
     return componentA
 })
 ```

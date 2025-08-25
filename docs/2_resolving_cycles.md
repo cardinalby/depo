@@ -112,7 +112,7 @@ components.A = depo.Provide(func() *ComponentA {
 })
 ```
 
-It only can be used if your struct is safe to copy (has no mutexes, atomic values, etc...).
+It can only be used if your struct is safe to copy (has no mutexes, atomic values, etc...).
 
 ## Non-lifecycle aware components only
 

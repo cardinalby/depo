@@ -16,11 +16,11 @@ var errNotInProviderFn = errors.New("must be called inside `provider` function")
 // LifecycleHookBuilder is used for building a component's lifecycle behavior
 type LifecycleHookBuilder interface {
 	// AddReadinessRunnable registers a ReadinessRunnable in the component's lifecycle.
-	// Should be called only once, panics if other methods has been already called
+	// Panics if any other lifecycle methods (e.g. AddRunnable, AddStarter, AddCloser) have already been called.
 	// `options` can be used to configure the way it's handled by the Runner:
 	// OptStartTimeout, OptNilRunResultAsError
 	AddReadinessRunnable(
-		runnable ReadinessRunnable,
+		readinessRunnable ReadinessRunnable,
 		options ...ReadinessRunnableOption,
 	) LifecycleHookBuilder
 
@@ -31,7 +31,7 @@ type LifecycleHookBuilder interface {
 	) LifecycleHookBuilder
 
 	// AddRunnable registers a Runnable in the component's lifecycle.
-	// Should be called only once, panics if other methods has been already called
+	// Panics if any other lifecycle methods (e.g. AddReadinessRunnable, AddStarter, AddCloser) have already been called.
 	// `options` can be used to configure the way it's handled by the Runner: OptNilRunResultAsError
 	AddRunnable(
 		runnable Runnable,
@@ -133,7 +133,7 @@ func (b *lifecycleHookBuilder) AddRunnable(
 ) LifecycleHookBuilder {
 	b.checkCanAddRunnable()
 	if runnable == nil {
-		panic(fmt.Errorf("%w lcRoles", errNilValue))
+		panic(fmt.Errorf("%w runnable", errNilValue))
 	}
 	b.runnable = runnable
 	b.runnableCfg = newRunnableCfg(options)
@@ -159,10 +159,10 @@ func (b *lifecycleHookBuilder) AddStarter(
 ) LifecycleHookBuilder {
 	b.checkNoRunnable()
 	if b.starter != nil {
-		panic(fmt.Errorf("starterMock %w", errAlreadyAdded))
+		panic(fmt.Errorf("starter %w", errAlreadyAdded))
 	}
 	if starter == nil {
-		panic(fmt.Errorf("%w starterMock", errNilValue))
+		panic(fmt.Errorf("%w starter", errNilValue))
 	}
 	b.starter = starter
 	b.starterCfg = newStarterCfg(options)
@@ -175,13 +175,10 @@ func (b *lifecycleHookBuilder) AddStartFn(
 ) LifecycleHookBuilder {
 	b.checkNoRunnable()
 	if b.starter != nil {
-		panic(fmt.Errorf("starterMock %w", errAlreadyAdded))
+		panic(fmt.Errorf("starter %w", errAlreadyAdded))
 	}
 	if startFn == nil {
 		panic(fmt.Errorf("%w startFn", errNilValue))
-	}
-	if b.starter != nil {
-		panic(fmt.Errorf("starterMock %w", errAlreadyAdded))
 	}
 	b.starter = &fnStarter{fn: startFn}
 	b.starterCfg = newStarterCfg(options)
@@ -222,7 +219,7 @@ func (b *lifecycleHookBuilder) Tag(tag any) LifecycleHookBuilder {
 func (b *lifecycleHookBuilder) checkCanAddRunnable() {
 	b.checkNoRunnable()
 	if b.starter != nil {
-		panic(fmt.Errorf("starterMock %w", errAlreadyAdded))
+		panic(fmt.Errorf("starter %w", errAlreadyAdded))
 	}
 	if b.closer != nil {
 		panic(fmt.Errorf("closer %w", errAlreadyAdded))
@@ -231,7 +228,7 @@ func (b *lifecycleHookBuilder) checkCanAddRunnable() {
 
 func (b *lifecycleHookBuilder) checkNoRunnable() {
 	if b.runnable != nil {
-		panic(fmt.Errorf("lcRoles %w", errAlreadyAdded))
+		panic(fmt.Errorf("runnable %w", errAlreadyAdded))
 	}
 	if b.readinessRunnable != nil {
 		panic(fmt.Errorf("readinessRunnable %w", errAlreadyAdded))
