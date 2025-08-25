@@ -81,15 +81,16 @@ In this approach you lifecycle hook consists of a single `Run` method or functio
 
 ### 🔹 ReadinessRunnable
 
-It's an alternative to **Starter** + **Closer** + **Wait** health tracking. 
-
-It notifies its **readiness** (when it has been started and doesn't block starts of dependents anymore) via `onReady` callback.
-
 ```go
 type ReadinessRunnable interface {
     Run(ctx context.Context, onReady func()) error
 }
 ```
+
+It's an alternative to **Starter** + **Closer** + **Wait** health tracking. 
+
+It notifies its **readiness** (when it has been started and doesn't block starts of dependents anymore) 
+via `onReady` callback.
 
 Run should:
 - **Block** until the component **completes** its job (**or** is **stopped** via `ctx` cancellation).
@@ -102,17 +103,17 @@ Run should:
 
 ### 🔹 Runnable
 
-It's an alternative to "immediately ready **Starter**" + **Closer** + **Wait** health tracking.
-
-It's the same as **ReadinessRunnable** except the lack of `onReady` callback.
-
-Once **Run** is called, the component **immediately** unblocks dependents' starts (considered immediately ready).
-
 ```go
 type Runnable interface {
     Run(ctx context.Context) error
 }
 ```
+
+It's an alternative to "immediately ready **Starter**" + **Closer** + **Wait** health tracking.
+
+It's the same as **ReadinessRunnable** except the lack of `onReady` callback.
+
+Once **Run** is called, the component **immediately** unblocks dependents' starts (considered immediately ready).
 
 ## Lifecycle Hooks
 

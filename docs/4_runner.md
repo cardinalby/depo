@@ -67,21 +67,26 @@ func main() {
 ## Runner lifecycle
 
 **Runner** itself behaves as an aggregated [ReadinessRunnable](./3_lifecycle.md) that:
-- **Starts** all components that have `Starter`, `Runnable` or `ReadinessRunnable` lifecycle hooks
-  in the proper order (from leaves to roots)
+- **Starts** all `Starter`, `Runnable` or `ReadinessRunnable` lifecycle hooks in the proper order (from leaves to roots)
 - Once they are all **started** successfully, it calls the `onReady` **callback**
-- If any of the components **fail** to start, it **shuts down** all components that have already been started 
-- **Waits** for the `ctx` to be done (e.g. on `SIGINT`/`SIGTERM`) or for any of the components to return an **error** from 
-  their `Run` method
-- **Shuts down** all components that have `Closer`, `Runnable` or `ReadinessRunnable` lifecycle hooks in the proper 
-  order (from roots to leaves)
-- Returns the **error** that caused the **shutdown** (can be `nil` if all components finished with no error)
+- If any of the hooks **fail** to start, it **shuts down** all hooks that have already been started 
+- **Waits** for the `ctx` to be done (e.g. on `SIGINT`/`SIGTERM`) or for any of the hooks to return an **error** from 
+  their `Run` method to start the **shutdown**
+- **Shuts down** all `Closer`, `Runnable` or `ReadinessRunnable` hooks in the proper order (from roots to leaves)
+- Once all hooks are **done**, returns the **error** that caused the **shutdown**:
+  - `nil` if all components finished with no error (or 
+    [`ErrUnexpectedRunNilResult`](https://pkg.go.dev/github.com/cardinalby/depo#ErrUnexpectedRunNilResult) if 
+    [`OptNilRunResultAsError`](https://pkg.go.dev/github.com/cardinalby/depo#OptNilRunResultAsError) option is used)
+  - `ctx.Err()` if the `ctx` was cancelled
+  - [`ErrLifecycleHookFailed`](https://pkg.go.dev/github.com/cardinalby/depo#ErrLifecycleHookFailed) wrapping the original hook's error
 
-Check out the **demo web page** (based on WebAssembly-compiled example application) to see how it works
+### [Web Demo page](https://cardinalby.github.io/depo/)
 
-➡️ [Web Demo page](https://cardinalby.github.io/depo/)
+The demo page is based on WebAssembly-compiled example application visualizing dependencies graph with 
+components' lifecycle phases during the `Runner` execution
 
-On the page you can click on any component to assign it a start error or make it return `Run` error.
+All the components are ReadinessRunnables. You can click on any component to assign it a start error 
+or make it return an error later while running. You can also cancel Runner's context to see how shutdown works.
 
 <details>
 <summary>🔹 Full application lifecycle</summary>
@@ -117,7 +122,8 @@ By default, `nil` error returned by `Runnable` or `ReadinessRunnable` components
 completion and doesn't trigger shutdown of other components.
 
 The option changes this behavior for all such components. After receiving `nil` error from `Run` method, the Runner
-will trigger shutdown with `ErrUnexpectedRunNilResult` cause.
+will trigger shutdown with 
+[`ErrUnexpectedRunNilResult`](https://pkg.go.dev/github.com/cardinalby/depo#ErrUnexpectedRunNilResult) cause.
 
 ### 🔹 OptRunnerListeners(...)
 
