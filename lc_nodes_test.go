@@ -112,7 +112,7 @@ func (r runnableOrderRequirements) CheckLcNodesGraph(
 		visit(node)
 		require.Nil(t, node.dependents)
 	}
-	for _, node := range graph.leafs {
+	for _, node := range graph.leaves {
 		require.Nil(t, node.dependsOn)
 	}
 	getDepsTags := func(node *lcNode) []any {

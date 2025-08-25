@@ -52,12 +52,12 @@ func (rs *runnerSession) run(ctx context.Context) error {
 		return ctx.Err()
 	}
 
-	if len(rs.graph.leafs) == 0 {
+	if len(rs.graph.leaves) == 0 {
 		rs.onReady()
 		return nil
 	}
 
-	for _, node := range rs.graph.leafs {
+	for _, node := range rs.graph.leaves {
 		if done := rs.tryStartNode(node); done {
 			return rs.shutdownErr
 		}

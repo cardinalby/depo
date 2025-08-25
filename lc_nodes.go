@@ -8,7 +8,7 @@ type lcNodes []*lcNode
 
 type lcNodesGraph struct {
 	roots      lcNodes
-	leafs      lcNodes
+	leaves     lcNodes
 	totalCount int
 }
 
@@ -180,7 +180,7 @@ func newLcNodesGraph(rootNode depNode) (graph lcNodesGraph, err error) {
 	}
 	for _, node := range sorted {
 		if len(node.dependsOn) == 0 {
-			graph.leafs = append(graph.leafs, node)
+			graph.leaves = append(graph.leaves, node)
 		}
 		if _, ok := dependentsOf[node]; ok {
 			node.dependents = lcNodesSetToSlice(dependentsOf[node])
@@ -192,8 +192,8 @@ func newLcNodesGraph(rootNode depNode) (graph lcNodesGraph, err error) {
 	graph.totalCount = len(sorted)
 
 	//goland:noinspection GoBoolExpressions
-	if tests.IsTestingBuild && graph.totalCount != 0 && (len(graph.roots) == 0 || len(graph.leafs) == 0) {
-		panic("lcNodes graph has no roots or leafs but there are lcNodes")
+	if tests.IsTestingBuild && graph.totalCount != 0 && (len(graph.roots) == 0 || len(graph.leaves) == 0) {
+		panic("lcNodes graph has no roots or leaves but there are lcNodes")
 	}
 
 	return graph, nil
