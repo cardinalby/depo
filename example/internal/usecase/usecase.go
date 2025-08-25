@@ -260,8 +260,8 @@ func (u *Usecase) formatErr(err error) string {
 	}
 	var componentErr depo.ErrLifecycleHookFailed
 	if errors.As(err, &componentErr) {
-		return fmt.Sprintf("%d failed: %s",
-			componentErr.LifecycleHook().ComponentInfo().ID(), u.formatErr(componentErr.Unwrap()))
+		return fmt.Sprintf("%v failed: %s",
+			componentErr.LifecycleHook().Tag(), u.formatErr(componentErr.Unwrap()))
 	}
 	return err.Error()
 }
