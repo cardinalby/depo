@@ -73,9 +73,10 @@ components.B = depo.Provide(func() *ComponentB {
 })
 ```
 
-This way we break the initialization into 2 phases:
+This way we break the initialization into **2 phases**:
 1. Creating components and linking them without cycles
-2. Executing late-init callbacks to finish initialization. At this step we use already-created components
+2. Executing late-init callbacks to finish initialization. At this step we use already created (and memoized
+   components and don't face cycles as well
 
 Note that:
 - It doesn't matter which component in the cycle uses 
@@ -112,7 +113,8 @@ components.A = depo.Provide(func() *ComponentA {
 })
 ```
 
-It can only be used if your struct is safe to copy (has no mutexes, atomic values, etc...).
+> [!CAUTION]
+> It can only be used if your struct is safe to copy (has no mutexes, atomic values, etc...).
 
 ## Non-lifecycle aware components only
 

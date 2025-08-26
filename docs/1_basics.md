@@ -32,9 +32,9 @@ c := depo.Provide(func() *ComponentC {
 
 // CC AA BB
 fmt.Println(
-    c().Name,
-    a().Name,
-    b().Name,
+    c().Name,  // initializes a, b, c
+    a().Name,  // returns memoized a
+    b().Name,  // returns memoized b
 )
 ```
 
