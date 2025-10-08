@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"syscall/js"
 
-	"github.com/cardinalby/depo/example/internal/usecase"
-	"github.com/cardinalby/depo/example/internal/wasm"
+	"github.com/cardinalby/depo/demo/internal/usecase"
+	"github.com/cardinalby/depo/demo/internal/wasm"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/cardinalby/depo/example
+module github.com/cardinalby/depo/demo
 
 go 1.24
 

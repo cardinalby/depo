@@ -6,7 +6,7 @@ import (
 	"syscall/js"
 	"time"
 
-	"github.com/cardinalby/depo/example/internal/domain"
+	"github.com/cardinalby/depo/demo/internal/domain"
 )
 
 type usecase interface {

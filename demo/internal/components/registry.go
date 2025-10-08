@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/cardinalby/depo"
-	"github.com/cardinalby/depo/example/internal/domain"
+	"github.com/cardinalby/depo/demo/internal/domain"
 )
 
 type RunnableComponentConfig struct {

@@ -1,0 +1,56 @@
+package httpsrv
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"net/http"
+	"time"
+
+	"github.com/cardinalby/depo"
+)
+
+const shutdownTimeout = 5 * time.Second
+
+type server struct {
+	addr    string
+	handler http.Handler
+}
+
+func NewServer(addr string, handler http.Handler) depo.ReadinessRunnable {
+	return &server{
+		addr:    addr,
+		handler: handler,
+	}
+}
+
+func (s *server) Run(ctx context.Context, onReady func()) error {
+	listener, err := net.Listen("tcp", s.addr)
+	if err != nil {
+		return fmt.Errorf("failed to listen on %s: %w", s.addr, err)
+	}
+	if onReady != nil {
+		onReady()
+	}
+	httpSrv := http.Server{
+		Handler: s.handler,
+	}
+	serveRes := make(chan error, 1)
+	go func() {
+		serveRes <- httpSrv.Serve(listener)
+		close(serveRes)
+	}()
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		return httpSrv.Shutdown(shutdownCtx)
+
+	case err := <-serveRes:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("http server error: %w", err)
+		}
+		return nil
+	}
+}

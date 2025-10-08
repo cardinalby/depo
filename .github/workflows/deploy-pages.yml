@@ -52,7 +52,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./example/web/build
+          path: ./demo/web/build
 
       - name: Deploy to GitHub Pages
         id: deployment
