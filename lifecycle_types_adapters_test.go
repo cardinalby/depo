@@ -70,16 +70,6 @@ func TestFnCloser_Close(t *testing.T) {
 	require.True(t, isCalled)
 }
 
-func TestFnWaiter_Wait(t *testing.T) {
-	fnErr := errors.New("test error")
-	fn := &fnWaiter{fn: func() (err error) {
-		return fnErr
-	}}
-	require.Equal(t, fnErr, fn.wait())
-	m := make(map[waiter]any)
-	m[fn] = nil // ensure is hashable
-}
-
 func TestPhasedReadinessRunnable(t *testing.T) {
 	prepare := func() (*readinessRunnableMock, *phasedReadinessRunnable, context.Context, context.CancelFunc) {
 		runnable := newReadinessRunnableMock(0)

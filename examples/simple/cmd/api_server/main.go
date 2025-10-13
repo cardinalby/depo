@@ -9,9 +9,9 @@ import (
 func main() {
 	app := api_server.Init()
 	if err := app.Run(nil, func() {
-		log.Printf("API server is ready")
+		log.Printf("API server app is ready")
 	}); err != nil {
-		log.Fatalf("stopped with error: %v", err)
+		log.Fatalf("API server app stopped with error: %v", err)
 	}
-	log.Printf("API server stopped")
+	log.Printf("API server app stopped with no error")
 }

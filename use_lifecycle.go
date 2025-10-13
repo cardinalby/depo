@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync/atomic"
 
@@ -307,14 +308,47 @@ func (hook *lifecycleHook) close(cause error) {
 }
 
 func (hook *lifecycleHook) String() string {
+	strWithImplName, _ := hook.stringForPhase("")
+	return strWithImplName
+}
+
+func (hook *lifecycleHook) stringForPhase(phase failedLifecyclePhase) (strWithImplName string, methodName string) {
 	var sb strings.Builder
-	sb.WriteString(hook.getRegRolesString())
+	if phase == "" {
+		sb.WriteString(hook.getRegRolesString())
+	} else {
+		var name string
+		name, methodName = hook.getPhaseImplStrings(phase)
+		sb.WriteString(name)
+	}
 	if hook.tag != nil {
 		sb.WriteString(fmt.Sprintf(" (tag: %v)", hook.tag))
 	}
 	sb.WriteString(" registered at\n")
 	sb.WriteString(hook.regAt.FileLines())
-	return sb.String()
+	return sb.String(), methodName
+}
+
+func (hook *lifecycleHook) getPhaseImplStrings(phase failedLifecyclePhase) (name string, method string) {
+	var impl any
+	switch phase {
+	case failedLifecyclePhaseStart:
+		method = lcStartMethodName
+		impl = hook.starter
+	case failedLifecyclePhaseWait:
+		impl = hook.waiter
+		method = lcRunMethodName
+	}
+	if impl == nil {
+		if tests.IsTestingBuild {
+			panic(fmt.Sprintf("unexpected phase %s or nil impl", phase))
+		}
+		return "", method
+	}
+	if adapterStringer, ok := impl.(lcAdapterStringer); ok {
+		return adapterStringer.getLcAdapterImplNameAndMethod()
+	}
+	return reflect.TypeOf(impl).String(), method
 }
 
 func (hook *lifecycleHook) getRegRolesString() string {
@@ -332,28 +366,4 @@ func (hook *lifecycleHook) getRegRolesString() string {
 		roles = append(roles, "Closer")
 	}
 	return strings.Join(roles, "/")
-}
-
-func (hook *lifecycleHook) getFailedLcMethodName(phase failedLifecyclePhase) string {
-	switch phase {
-	case failedLifecyclePhaseStart:
-		switch hook.starter.(type) {
-		case *phasedRunnable, *phasedReadinessRunnable:
-			return "Run"
-		default:
-			return "Start"
-		}
-	case failedLifecyclePhaseWait:
-		switch hook.waiter.(type) {
-		case *phasedRunnable, *phasedReadinessRunnable:
-			return "Run"
-		default:
-			return "wait"
-		}
-	default:
-		if tests.IsTestingBuild {
-			panic(fmt.Errorf("unexpected failedPhase %s", phase))
-		}
-		return ""
-	}
 }

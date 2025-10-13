@@ -1,5 +1,7 @@
 package domain
 
+import "context"
+
 type Cat struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
@@ -7,11 +9,11 @@ type Cat struct {
 }
 
 type CatsRepository interface {
-	GetAll() ([]Cat, error)
-	Add(name string, age uint) (Cat, error)
+	GetAll(ctx context.Context) ([]Cat, error)
+	Add(ctx context.Context, name string, age uint) (Cat, error)
 }
 
 type CatsUsecase interface {
-	GetAll() ([]Cat, error)
-	Add(name string, age uint) (Cat, error)
+	GetAll(ctx context.Context) ([]Cat, error)
+	Add(ctx context.Context, name string, age uint) (Cat, error)
 }

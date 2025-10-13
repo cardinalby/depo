@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"iter"
 	"time"
 
 	"github.com/cardinalby/examples/simple/internal/app/internal/domain"
@@ -9,42 +10,50 @@ import (
 )
 
 type historyRepo struct {
-	jsonLog jsonlog.Logger
+	jsonLog    jsonlog.Logger
+	timeFormat string
 }
 
 func NewHistoryRepository(jsonLog jsonlog.Logger) domain.HistoryRepository {
-	return &historyRepo{jsonLog: jsonLog}
+	return &historyRepo{
+		jsonLog:    jsonLog,
+		timeFormat: time.RFC3339,
+	}
 }
 
-func (r *historyRepo) GetAll() ([]domain.HistoryRec, error) {
-	msgs, err := r.jsonLog.ReadMessages()
-	if err != nil {
-		return nil, err
-	}
-	records := make([]domain.HistoryRec, 0, len(msgs))
-	for _, msg := range msgs {
-		rec, err := r.mapToHistoryRec(msg)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert log message to history record: %w", err)
+func (r *historyRepo) GetRecordsIter() iter.Seq2[domain.HistoryRec, error] {
+	return func(yield func(domain.HistoryRec, error) bool) {
+		for rawMsg, err := range r.jsonLog.GetMessagesIter() {
+			if err != nil {
+				yield(domain.HistoryRec{}, err)
+				return
+			}
+			rec, err := r.mapToHistoryRec(rawMsg)
+			if err != nil {
+				yield(domain.HistoryRec{}, fmt.Errorf("failed to convert log message to history record: %w", err))
+				return
+			}
+			if !yield(rec, nil) {
+				return
+			}
 		}
-		records = append(records, rec)
 	}
-	return records, nil
 }
 
-func (r *historyRepo) Add(action string) error {
+func (r *historyRepo) Add(action string, moment time.Time) error {
 	return r.jsonLog.WriteJson(map[string]any{
 		"action": action,
-		"time":   time.Now().Format(time.RFC3339),
+		"time":   moment.Format(r.timeFormat),
 	})
 }
 
 func (r *historyRepo) mapToHistoryRec(m map[string]any) (rec domain.HistoryRec, err error) {
 	if t, ok := m["time"].(string); ok {
-		rec.Time, err = time.Parse(time.RFC3339, t)
+		rec.Time, err = time.Parse(r.timeFormat, t)
 		if err != nil {
 			return rec, fmt.Errorf("failed to parse time: %w", err)
 		}
+		rec.Time = rec.Time.Local()
 	} else {
 		return rec, fmt.Errorf("time field is missing or not a string")
 	}

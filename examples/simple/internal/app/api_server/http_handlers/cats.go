@@ -12,12 +12,15 @@ func RegisterCatsHandlers(
 	catsUsecase domain.CatsUsecase,
 ) {
 	mux.HandleFunc("GET /cats", func(w http.ResponseWriter, r *http.Request) {
-		cats, err := catsUsecase.GetAll()
+		cats, err := catsUsecase.GetAll(r.Context())
 		if err != nil {
 			http.Error(w, "Failed to get cats: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		if cats == nil {
+			cats = []domain.Cat{}
+		}
 		if err := json.NewEncoder(w).Encode(cats); err != nil {
 			http.Error(w, "Failed to encode cats: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -33,7 +36,7 @@ func RegisterCatsHandlers(
 			http.Error(w, "Failed to decode request: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-		cat, err := catsUsecase.Add(req.Name, req.Age)
+		cat, err := catsUsecase.Add(r.Context(), req.Name, req.Age)
 		if err != nil {
 			http.Error(w, "Failed to add cat: "+err.Error(), http.StatusInternalServerError)
 			return

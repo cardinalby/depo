@@ -1,22 +1,20 @@
 package internal
 
 import (
-	"net/http"
-
 	"github.com/caarlos0/env/v7"
 	"github.com/cardinalby/depo"
 	"github.com/cardinalby/examples/simple/internal/app/internal/domain"
-	"github.com/cardinalby/examples/simple/internal/app/internal/http_handlers"
+	"github.com/cardinalby/examples/simple/internal/app/internal/infra/sqlite_migrations"
 	"github.com/cardinalby/examples/simple/internal/app/internal/repositories"
 	"github.com/cardinalby/examples/simple/internal/app/internal/usecases"
-	"github.com/cardinalby/examples/simple/internal/pkg/httpsrv"
 	"github.com/cardinalby/examples/simple/internal/pkg/jsonlog"
+	"github.com/cardinalby/examples/simple/internal/pkg/sql"
 	"github.com/cardinalby/examples/simple/internal/pkg/sqlite"
 )
 
 type InfraProviders struct {
 	Config  func() AppConfig
-	Db      func() sqlite.Db
+	DB      func() sql.DB
 	LogFile func() jsonlog.Logger
 }
 
@@ -26,68 +24,98 @@ type ReposProviders struct {
 }
 
 type UsecasesProviders struct {
-	Cats func() domain.CatsUsecase
+	History func() domain.HistoryUsecase
+	Cats    func() domain.CatsUsecase
 }
 
+// Providers contains shared app dependencies that can be re-used in lazy-manner in different applications
+// (see cmd folder). Entry-point components (HTTP server, CLI commands) that are unique per application
+// are not defined here (see app/api_server and app/cli_history_exporter folders).
 type Providers struct {
 	Infra    InfraProviders
 	Repos    ReposProviders
-	Usecases UsecasesProviders
-	HttpApi  func() struct{}
+	UseCases UsecasesProviders
 }
 
 func NewProviders() (p Providers) {
 	p.Infra = newInfraProviders()
 	p.Repos = newRepoProviders(p.Infra)
-	p.Usecases = newUsecaseProviders(p.Repos)
-
-	p.HttpApi = depo.Provide(func() (void struct{}) {
-		mux := http.NewServeMux()
-		http_handlers.RegisterCatsHandlers(mux, p.Usecases.Cats())
-		srv := httpsrv.NewServer(p.Infra.Config().GetHttpSrvAddr(), mux)
-		depo.UseLifecycle().AddReadinessRunnable(srv)
-		return void
-	})
+	p.UseCases = newUsecaseProviders(p.Repos, p.Infra)
 
 	return p
 }
 
-func newRepoProviders(p InfraProviders) (rr ReposProviders) {
-	rr.Cats = depo.Provide(func() domain.CatsRepository {
-		return repositories.NewCatsRepository(p.Db().GetDB())
+func newRepoProviders(infra InfraProviders) (repos ReposProviders) {
+	repos.Cats = depo.Provide(func() domain.CatsRepository {
+		return repositories.NewCatsRepository(infra.DB())
 	})
 
-	rr.History = depo.Provide(func() domain.HistoryRepository {
-		return repositories.NewHistoryRepository(p.LogFile())
+	repos.History = depo.Provide(func() domain.HistoryRepository {
+		return repositories.NewHistoryRepository(infra.LogFile())
 	})
 
-	return rr
+	return repos
 }
 
-func newUsecaseProviders(r ReposProviders) (up UsecasesProviders) {
-	up.Cats = depo.Provide(func() domain.CatsUsecase {
-		return usecases.NewCatsUsecase(r.Cats(), r.History())
+func newUsecaseProviders(
+	repos ReposProviders,
+	infra InfraProviders,
+) (useCases UsecasesProviders) {
+	useCases.History = depo.Provide(func() domain.HistoryUsecase {
+		return usecases.NewHistoryUsecase(
+			repos.History(),
+		)
 	})
 
-	return up
+	useCases.Cats = depo.Provide(func() domain.CatsUsecase {
+		return usecases.NewCatsUsecase(
+			repos.Cats(),
+			useCases.History(),
+			infra.Config().GetOpTimeout(),
+		)
+	})
+
+	return useCases
 }
 
-func newInfraProviders() (ip InfraProviders) {
-	ip.Config = depo.Provide(func() AppConfig {
+func newInfraProviders() (infra InfraProviders) {
+	infra.Config = depo.Provide(func() AppConfig {
+		// It's an exception from lifecycle management. Config is parsed upon creation
+		// (not in Start phase of the lifecycle) to be available for other components' constructors
+		// and because it's a quick operation that unlikely fails
 		var appCfg appConfig
-		if err := env.Parse(appCfg); err != nil {
+		if err := env.Parse(&appCfg); err != nil {
 			panic("failed to parse env vars: " + err.Error())
 		}
 		return &appCfg
 	})
 
-	ip.Db = depo.Provide(func() sqlite.Db {
-		return sqlite.NewDb("file:" + ip.Config().GetDbFilepath())
+	infra.DB = depo.Provide(func() sql.DB {
+		// It's a bit tricky. We want to expose a sql.DB that is ready to be used (has all migrations executed)
+		// once Started.
+
+		// Internal `sqliteDB` provider has an own scope (different from `infra.DB`) where
+		// it defines lifecycle hooks to open/close DB connection
+		sqliteDB := depo.Provide(func() sqlite.Db {
+			db := sqlite.NewDb(infra.Config().GetDbFilepath())
+			depo.UseLifecycle().AddStarter(db).AddCloser(db)
+			return db
+		})
+
+		// `infra.DB` depends on `sqliteDB` and defines own lifecycle `Starter` hook based on `migrator.Start`.
+		// This way `db := sqlite.NewDb(...)` will start first and only then dependent `migrator.Start` will be called
+		db := sqliteDB()
+		migrator := sqlite.NewMigrator(db, sqlite_migrations.GetMigrationCollection())
+		depo.UseLifecycle().AddStarter(migrator)
+
+		return db
 	})
 
-	ip.LogFile = depo.Provide(func() jsonlog.Logger {
-		return jsonlog.NewLogger(ip.Config().GetLogFilepath())
+	infra.LogFile = depo.Provide(func() jsonlog.Logger {
+		logger := jsonlog.NewLogger(infra.Config().GetLogFilepath())
+		depo.UseLifecycle().AddCloser(logger)
+		return logger
 	})
 
-	return ip
+	return infra
 }

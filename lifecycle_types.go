@@ -61,3 +61,6 @@ type ReadinessRunnable interface {
 	//   This default can be overridden by OptNilRunResultAsError option
 	Run(ctx context.Context, onReady func()) error
 }
+
+const lcStartMethodName = "Start"
+const lcRunMethodName = "Run"

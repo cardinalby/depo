@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"time"
@@ -26,10 +27,12 @@ func NewServer(addr string, handler http.Handler) depo.ReadinessRunnable {
 }
 
 func (s *server) Run(ctx context.Context, onReady func()) error {
+	log.Println("starting HTTP server tcp listener")
 	listener, err := net.Listen("tcp", s.addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", s.addr, err)
 	}
+	log.Println("HTTP server tcp listener started")
 	if onReady != nil {
 		onReady()
 	}
@@ -39,12 +42,14 @@ func (s *server) Run(ctx context.Context, onReady func()) error {
 	serveRes := make(chan error, 1)
 	go func() {
 		serveRes <- httpSrv.Serve(listener)
+		log.Println("HTTP server Serve completed")
 		close(serveRes)
 	}()
 	select {
 	case <-ctx.Done():
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
+		log.Printf("shutting down HTTP server (cause: %v)\n", context.Cause(ctx).Error())
 		return httpSrv.Shutdown(shutdownCtx)
 
 	case err := <-serveRes:

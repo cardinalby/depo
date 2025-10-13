@@ -2,6 +2,7 @@ package depo
 
 import (
 	"context"
+	"reflect"
 	"sync/atomic"
 )
 
@@ -13,6 +14,13 @@ type trustedAsyncCloser interface {
 	trustedAsyncCloserDeclaration()
 }
 
+type lcAdapterStringer interface {
+	// is used to describe the implementation that was passed to the lifecycle hook in error messages.
+	// If name is self-explanatory, method is empty string. Of name contains the name of a user type,
+	// method contains the method name of the type that is used
+	getLcAdapterImplNameAndMethod() (name string, method string)
+}
+
 // wrap fn into structs to make struct pointers hashable
 type fnReadinessRunnable struct {
 	fn func(ctx context.Context, onReady func()) (err error)
@@ -20,6 +28,10 @@ type fnReadinessRunnable struct {
 
 func (f *fnReadinessRunnable) Run(ctx context.Context, onReady func()) (err error) {
 	return f.fn(ctx, onReady)
+}
+
+func (f *fnReadinessRunnable) getLcAdapterImplNameAndMethod() (name string, method string) {
+	return "ReadinessRunFn", ""
 }
 
 type fnRunnable struct {
@@ -30,12 +42,20 @@ func (f *fnRunnable) Run(ctx context.Context) (err error) {
 	return f.fn(ctx)
 }
 
+func (f *fnRunnable) getLcAdapterImplNameAndMethod() (name string, method string) {
+	return "RunFn", ""
+}
+
 type fnStarter struct {
 	fn func(ctx context.Context) (err error)
 }
 
 func (f *fnStarter) Start(ctx context.Context) (err error) {
 	return f.fn(ctx)
+}
+
+func (f *fnStarter) getLcAdapterImplNameAndMethod() (name string, method string) {
+	return "StartFn", ""
 }
 
 type fnCloser struct {
@@ -46,12 +66,8 @@ func (f *fnCloser) Close() {
 	f.fn()
 }
 
-type fnWaiter struct {
-	fn func() (err error)
-}
-
-func (f *fnWaiter) wait() (err error) {
-	return f.fn()
+func (f *fnCloser) getLcAdapterImplNameAndMethod() (name string, method string) {
+	return "CloseFn", ""
 }
 
 type phasedReadinessRunnable struct {
@@ -104,6 +120,13 @@ func (pr *phasedReadinessRunnable) close(cause error) {
 
 func (pr *phasedReadinessRunnable) trustedAsyncCloserDeclaration() {}
 
+func (pr *phasedReadinessRunnable) getLcAdapterImplNameAndMethod() (name string, method string) {
+	if adapterStringer, ok := pr.runnable.(lcAdapterStringer); ok {
+		return adapterStringer.getLcAdapterImplNameAndMethod()
+	}
+	return reflect.TypeOf(pr.runnable).String(), lcRunMethodName
+}
+
 type phasedRunnable struct {
 	runnable     Runnable
 	runCtx       context.Context
@@ -145,3 +168,10 @@ func (pr *phasedRunnable) close(cause error) {
 func (pr *phasedRunnable) trustedAsyncCloserDeclaration() {}
 
 func (pr *phasedRunnable) trustedNoOpCloserAfterDoneDeclaration() {}
+
+func (pr *phasedRunnable) getLcAdapterImplNameAndMethod() (name string, method string) {
+	if adapterStringer, ok := pr.runnable.(lcAdapterStringer); ok {
+		return adapterStringer.getLcAdapterImplNameAndMethod()
+	}
+	return reflect.TypeOf(pr.runnable).String(), lcRunMethodName
+}

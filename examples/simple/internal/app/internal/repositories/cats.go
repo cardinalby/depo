@@ -1,23 +1,24 @@
 package repositories
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"log"
 
 	"github.com/cardinalby/examples/simple/internal/app/internal/domain"
+	"github.com/cardinalby/examples/simple/internal/pkg/sql"
 )
 
 type catsRepo struct {
-	db *sql.DB
+	db sql.DB
 }
 
-func NewCatsRepository(db *sql.DB) domain.CatsRepository {
+func NewCatsRepository(db sql.DB) domain.CatsRepository {
 	return &catsRepo{db: db}
 }
 
-func (r *catsRepo) GetAll() (cats []domain.Cat, err error) {
-	rows, err := r.db.Query("SELECT id, name, age FROM cats")
+func (r *catsRepo) GetAll(ctx context.Context) (cats []domain.Cat, err error) {
+	rows, err := r.db.QueryContext(ctx, "SELECT id, name, age FROM cats")
 	if err != nil {
 		return cats, fmt.Errorf("failed to query cats: %w", err)
 	}
@@ -40,8 +41,8 @@ func (r *catsRepo) GetAll() (cats []domain.Cat, err error) {
 	return cats, nil
 }
 
-func (r *catsRepo) Add(name string, age uint) (cat domain.Cat, err error) {
-	res, err := r.db.Exec("INSERT INTO cats (name, age) VALUES (?, ?)", name, age)
+func (r *catsRepo) Add(ctx context.Context, name string, age uint) (cat domain.Cat, err error) {
+	res, err := r.db.ExecContext(ctx, "INSERT INTO cats (name, age) VALUES (?, ?)", name, age)
 	if err != nil {
 		return cat, fmt.Errorf("failed to add cat: %w", err)
 	}

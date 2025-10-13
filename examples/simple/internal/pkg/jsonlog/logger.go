@@ -1,9 +1,11 @@
 package jsonlog
 
 import (
-	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"iter"
 	"log"
 	"os"
 
@@ -19,7 +21,7 @@ type logger struct {
 // and appends JSON-encoded log entries to it
 type Logger interface {
 	WriteJson(dict map[string]any) error
-	ReadMessages() ([]map[string]any, error)
+	GetMessagesIter() iter.Seq2[map[string]any, error]
 	depo.Closer
 }
 
@@ -48,30 +50,41 @@ func (l *logger) WriteJson(dict map[string]any) error {
 	return nil
 }
 
-func (l *logger) ReadMessages() ([]map[string]any, error) {
-	b, err := os.ReadFile(l.filepath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
+func (l *logger) GetMessagesIter() iter.Seq2[map[string]any, error] {
+	return func(yield func(map[string]any, error) bool) {
+		// read in streaming manner
+		f, err := os.Open(l.filepath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return
+			}
+			yield(nil, fmt.Errorf("failed to open log file: %w", err))
+			return
 		}
-		return nil, fmt.Errorf("failed to read log file: %w", err)
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Printf("failed to close log file: %v", err)
+			}
+		}()
+		dec := json.NewDecoder(f)
+		for {
+			var msg map[string]any
+			if err := dec.Decode(&msg); err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				yield(nil, fmt.Errorf("failed to decode log entry: %w", err))
+				return
+			}
+			if !yield(msg, nil) {
+				return
+			}
+		}
 	}
-	lines := bytes.Split(b, []byte{newline})
-	var msgs []map[string]any
-	for _, line := range lines {
-		if len(line) == 0 {
-			continue
-		}
-		var msg map[string]any
-		if err := json.Unmarshal(line, &msg); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal log line: %w", err)
-		}
-		msgs = append(msgs, msg)
-	}
-	return msgs, nil
 }
 
 func (l *logger) Close() {
+	log.Println("closing json log file")
 	if l.file != nil {
 		if err := l.file.Close(); err != nil {
 			log.Printf("failed to close log file: %v", err)

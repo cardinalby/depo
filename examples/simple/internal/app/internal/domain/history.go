@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"iter"
+	"time"
+)
 
 type HistoryRec struct {
 	Time   time.Time
@@ -8,6 +11,11 @@ type HistoryRec struct {
 }
 
 type HistoryRepository interface {
-	GetAll() ([]HistoryRec, error)
+	GetRecordsIter() iter.Seq2[HistoryRec, error]
+	Add(action string, moment time.Time) error
+}
+
+type HistoryUsecase interface {
+	GetRecordsIter() iter.Seq2[HistoryRec, error]
 	Add(action string) error
 }

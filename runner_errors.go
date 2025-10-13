@@ -31,24 +31,26 @@ func newErrLifecycleHookFailed(
 	err error,
 ) errLifecycleHookFailed {
 	return errLifecycleHookFailed{
-		lcMethodName:  node.lcHook.getFailedLcMethodName(phase),
+		phase:         phase,
 		lcNodeOwnInfo: node.lcNodeOwnInfo,
 		err:           err,
 	}
-
 }
 
 type errLifecycleHookFailed struct {
-	lcMethodName  string
+	phase         failedLifecyclePhase
 	lcNodeOwnInfo lcNodeOwnInfo
 	err           error
 }
 
 func (e errLifecycleHookFailed) Error() string {
+	nameWithOrigin, method := e.lcNodeOwnInfo.stringForLcPhase(e.phase)
 	sb := strings.Builder{}
-	sb.WriteString(e.lcMethodName)
-	sb.WriteString(" of ")
-	sb.WriteString(e.lcNodeOwnInfo.String())
+	if method != "" {
+		sb.WriteString(method)
+		sb.WriteString(" of ")
+	}
+	sb.WriteString(nameWithOrigin)
 	sb.WriteString("\nfailed: ")
 	sb.WriteString(e.err.Error())
 	return sb.String()

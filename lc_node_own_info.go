@@ -33,11 +33,22 @@ func (lcn lcNodeOwnInfo) ID() uintptr {
 }
 
 func (lcn lcNodeOwnInfo) String() string {
+	nameWithOrigin, _ := lcn.stringForLcPhase("")
+	return nameWithOrigin
+}
+
+func (lcn lcNodeOwnInfo) stringForLcPhase(phase failedLifecyclePhase) (nameWithOrigin string, method string) {
 	var sb strings.Builder
-	sb.WriteString(lcn.lcHook.String())
+	if phase == "" {
+		sb.WriteString(lcn.lcHook.String())
+	} else {
+		var name string
+		name, method = lcn.lcHook.stringForPhase(phase)
+		sb.WriteString(name)
+	}
 	sb.WriteString("\nIn ")
 	sb.WriteString(lcn.depNode.GetDepInfo().String())
-	return sb.String()
+	return sb.String(), method
 }
 
 func (lcn lcNodeOwnInfo) ComponentInfo() ComponentInfo {
