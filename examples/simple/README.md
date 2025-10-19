@@ -3,7 +3,7 @@
 This is an example of a project with multiple executables sharing the same codebase.
 
 It's common in "modular monolith" architectures and demonstrates how lazy `depo` providers can be used
-in this case.
+to define all components but initialize only the ones needed for a specific application.
 
 The following diagram shows **all** the components of the project:
 

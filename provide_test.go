@@ -13,11 +13,11 @@ import (
 )
 
 func testsCleanup() {
+	testingGlobalVarsMu.Lock()
 	globalRegistry = newRegistry()
-	createdNodesMu.Lock()
 	createdNodes = make(map[dep.Id]depNode)
-	createdNodesMu.Unlock()
 	lastRunnableEventSeqNo.Store(0)
+	testingGlobalVarsMu.Unlock()
 }
 
 func TestDefs(t *testing.T) {

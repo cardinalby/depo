@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-var lastRunnableEventSeqNo atomic.Int64
-
 type lcPhaseMock struct {
 	errChan            chan error
 	enterSleepDuration atomic.Int64
@@ -42,7 +40,6 @@ func (l *lcPhaseMock) exec(ctx context.Context) chan error {
 		if d := l.enterSleepDuration.Load(); d > 0 {
 			select {
 			case <-ctx.Done():
-				fmt.Printf("enterSleepDuration: %d, ctx done: %v cause: %v\n", d, ctx.Err(), context.Cause(ctx))
 				if old := l.exitEventId.Swap(lastRunnableEventSeqNo.Add(1)); old != -1 {
 					panic(fmt.Sprintf("exitEventId already set: %d, new: %d", old, l.exitEventId.Load()))
 				}
@@ -56,7 +53,6 @@ func (l *lcPhaseMock) exec(ctx context.Context) chan error {
 				return
 
 			case <-time.After(time.Duration(d)):
-				fmt.Printf("enterSleepDuration: %d\n", d)
 			}
 		}
 

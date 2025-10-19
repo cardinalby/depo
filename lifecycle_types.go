@@ -35,6 +35,7 @@ type Closer interface {
 // Runnable is an alternative and more powerful sync semantics for "immediately ready Starter" + Closer with
 // health tracking in a single Run method. Once Run is called, the component unblocks dependents` starts.
 // UseLifecycle().AddRunnable() can be used to register a Runnable in the component's lifecycle.
+// If all Runnables/ReadyRunnables return nil error, the Runner will shut down.
 type Runnable interface {
 	// Run should:
 	// - block until the component completes its job or is stopped via `ctx` cancellation.
@@ -50,6 +51,7 @@ type Runnable interface {
 // health tracking in a single Run method.
 // It notifies its readiness (when it doesn't block starting of dependents anymore) via `onReady` callback.
 // UseLifecycle().AddReadinessRunnable() can be used to register a ReadinessRunnable in the component's lifecycle.
+// If all Runnables/ReadyRunnables return nil error, the Runner will shut down.
 type ReadinessRunnable interface {
 	// Run should:
 	// - block until the component completes its job or is stopped via `ctx` cancellation.

@@ -907,6 +907,8 @@ func TestRunner_RunPartialPhases(t *testing.T) {
 		{3, 4, 0},
 	}
 
+	// 3 (s/c) ---> 2 (c) ---> 1 (r) ---> 0 (s)
+	//                         └--------> 4 (c)
 	createDefs := func(rootIndexes []int) (
 		recs testDefRecs,
 		r Runner,
@@ -1195,12 +1197,6 @@ func TestRunner_RunPartialPhases(t *testing.T) {
 						recs[1].waiterMock.errChan <- nil
 						time.Sleep(time.Second)
 						require.Positive(t, recs[1].waiterMock.exitEventId.Load())
-						require.Negative(t, recs[3].closerMock.enterEventId.Load())
-						require.Negative(t, recs[2].closerMock.enterEventId.Load())
-						require.Negative(t, recs[4].closerMock.enterEventId.Load())
-
-						cancel()
-						time.Sleep(time.Second)
 						require.Positive(t, recs[3].closerMock.enterEventId.Load())
 						require.Negative(t, recs[2].closerMock.enterEventId.Load())
 						recs[3].closerMock.errChan <- nil

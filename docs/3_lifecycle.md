@@ -258,4 +258,4 @@ a := depo.Provide(func() *ComponentA {
 
 ## The last step
 
-➡️ [Application Runner](4_runner.md)
+👉 [Application Runner](4_runner.md)

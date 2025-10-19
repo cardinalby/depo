@@ -3,7 +3,6 @@ package depo
 import (
 	"fmt"
 	"reflect"
-	"sync"
 	"sync/atomic"
 
 	"github.com/cardinalby/depo/internal/dep"
@@ -30,17 +29,6 @@ const (
 	nodeRegStateWithLcHooks
 	nodeRegStateWithNoLcHooks
 )
-
-// for testing purposes, keep track of created nodes
-var createdNodes map[dep.Id]depNode
-var createdNodesMu *sync.Mutex
-
-func init() {
-	if tests.IsTestingBuild {
-		createdNodes = make(map[dep.Id]depNode)
-		createdNodesMu = &sync.Mutex{}
-	}
-}
 
 // depNode is an interface that represents a dependency in the graph where
 // generic type of componentNode is not needed
@@ -107,9 +95,9 @@ func newComponentNode[T any](
 	}
 
 	if tests.IsTestingBuild {
-		createdNodesMu.Lock()
+		testingGlobalVarsMu.Lock()
 		createdNodes[node.depInfo.Id] = node
-		createdNodesMu.Unlock()
+		testingGlobalVarsMu.Unlock()
 	}
 
 	return node

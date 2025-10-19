@@ -11,6 +11,8 @@ import (
 
 var errAlreadyRunning = errors.New("is already running")
 
+var errAllRunnablesAreDone = errors.New("all runnables are done")
+
 type nodeErrResult struct {
 	node *lcNode
 	err  error
@@ -267,7 +269,17 @@ func (rs *runnerSession) handleNodeWaited(waitRes nodeErrResult, doneState lcNod
 		return rs.tryCloseNode(waitRes.node, rs.shutdownCause)
 	}
 
-	return rs.stats.isAllDone()
+	if isAllDone := rs.stats.isAllDone(); isAllDone {
+		return true
+	}
+
+	if rs.stats.remainingWaits > 0 {
+		return false
+	}
+
+	// all waits (Runnable / ReadinessRunnable components) are done, no active jobs are running,
+	// init shutdown to Close remaining nodes
+	return rs.tryShutDown(nil, errAllRunnablesAreDone)
 }
 
 func (rs *runnerSession) tryWaitForNode(node *lcNode) (done bool) {

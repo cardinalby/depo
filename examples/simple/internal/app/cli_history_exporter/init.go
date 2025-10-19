@@ -11,10 +11,7 @@ func Init() depo.Runner {
 
 	cliHandler := depo.Provide(func() (void struct{}) {
 		handler := cli_handlers.NewHistoryExporter(p.UseCases.History())
-		// Use depo.OptNilRunResultAsError() option to make Runner return an `depo.ErrUnexpectedRunNilResult` error
-		// when the handler completes successfully (i.e. returns nil). We do that in order to allow the Runner
-		// to finish (because another lifecycle-aware components are blocking it)
-		depo.UseLifecycle().AddRunnable(handler, depo.OptNilRunResultAsError())
+		depo.UseLifecycle().AddRunnable(handler)
 		return void
 	})
 

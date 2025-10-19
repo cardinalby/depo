@@ -19,10 +19,21 @@ type LifecycleHookNode interface {
 // Runner is a lifecycle manager that runs and closes components' lifecycle hooks in the correct order
 // according to the dependency graph of the components.
 type Runner interface {
-	// Run starts all the components in the proper order (starting from the leaves) and returns when all
-	// components are done. `onReady` is called when all components are ready.
-	// If the context is canceled, the runner will stop all components in the proper order (starting from
-	// the roots) and return context.Canceled.
+	// Run method:
+	// 1. Starts all Starter, Runnable or ReadinessRunnable hooks in the proper order (from leaves to roots)
+	// 2. Once they are all started successfully, it calls the `onReady` callback
+	// 3. If any of the hooks fail to start, it shuts down all hooks that have already been started
+	// 4. Waits for:
+	//  - the `ctx` to be done (e.g. on `SIGINT`/`SIGTERM`)
+	//  - any of the Runnable hooks to return an error from `Run` method
+	//  - all the Runnable hooks to return nil from `Run` method
+	// 5. Shuts down all Closer, Runnable or ReadinessRunnable hooks in the proper order (from roots to leaves)
+	// 6. Once all hooks are done, returns the error that caused the shutdown:
+	// - `nil` if all components finished with no error
+	// - ErrUnexpectedRunNilResult if OptNilRunResultAsError option is used
+	// - ctx.Err() if the ctx was cancelled
+	// - ErrLifecycleHookFailed wrapping the original hook's error
+	//
 	// If the context is nil, a "shutdown context" is used (gets cancelled by SIGINT/SIGTERM).
 	// See pkg/contexts/NewShutdownContext for details.
 	Run(ctx context.Context, onReady func()) error

@@ -123,4 +123,4 @@ This technique can be used for components that don't have lifecycle hooks (use-c
 In other words, it solves cycles in component initialization, but the cycles between lifecycle-aware components
 prevent the `Runner` from finding out the proper order of starting/shutting down components
 
-➡️ [Components' lifecycle](./3_lifecycle.md)
+👉 [Components' lifecycle](./3_lifecycle.md)

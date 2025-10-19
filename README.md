@@ -24,7 +24,7 @@ from traditional DI features like:
 
 ## 🔹 Concurrent run and shutdown
 
-➡️ [Web Demo page](https://cardinalby.github.io/depo/)
+👉 [Web Demo page](https://cardinalby.github.io/depo/)
 
 <details>
 <summary>Full application lifecycle</summary>
@@ -58,4 +58,6 @@ lifecycle semantics for components
 go get github.com/cardinalby/depo
 ```
 
-Check out the [documentation](/docs/1_basics.md)
+👉 Check out the [Documentation](/docs/1_basics.md)
+
+👉 Check out the [Example multi-cmd project](./examples/simple)

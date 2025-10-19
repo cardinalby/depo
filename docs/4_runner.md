@@ -18,8 +18,10 @@ The **purpose** of the application is to **receive HTTP** requests and **process
 You have defined all the components with their dependencies and lifecycle hooks. Now you want the application
 to fulfill its purpose.
 
-That's the way **depo** encourages you to think: just require _"HTTP Srv"_ and _"Msg Queue Consumer"_ to be running
-and make **depo** take care of constructing dependencies and managing their lifecycles for you.
+> [!TIP]
+> That's the way **depo** encourages you to think: just require _"HTTP Srv"_ and _"Msg Queue Consumer"_ to be running
+> at the top level of your application and make **depo** take care of constructing dependencies and managing
+> their lifecycles for you.
 
 You need to create a `Runner` in a way similar to other components by requesting these **root** components:
 
@@ -70,8 +72,10 @@ func main() {
 - **Starts** all `Starter`, `Runnable` or `ReadinessRunnable` lifecycle hooks in the proper order (from leaves to roots)
 - Once they are all **started** successfully, it calls the `onReady` **callback**
 - If any of the hooks **fail** to start, it **shuts down** all hooks that have already been started 
-- **Waits** for the `ctx` to be done (e.g. on `SIGINT`/`SIGTERM`) or for any of the hooks to return an **error** from 
-  their `Run` method to start the **shutdown**
+- **Waits** for: 
+  - the `ctx` to be done (e.g. on `SIGINT`/`SIGTERM`)
+  - any of the `Runnable` hooks to return an **error** from `Run` method 
+  - all the `Runnable` hooks to return **nil** from `Run` method
 - **Shuts down** all `Closer`, `Runnable` or `ReadinessRunnable` hooks in the proper order (from roots to leaves)
 - Once all hooks are **done**, returns the **error** that caused the **shutdown**:
   - `nil` if all components finished with no error (or 
@@ -80,7 +84,7 @@ func main() {
   - `ctx.Err()` if the `ctx` was cancelled
   - [`ErrLifecycleHookFailed`](https://pkg.go.dev/github.com/cardinalby/depo#ErrLifecycleHookFailed) wrapping the original hook's error
 
-### [Web Demo page](https://cardinalby.github.io/depo/)
+### 👉 [Web Demo page](https://cardinalby.github.io/depo/)
 
 The demo page is based on WebAssembly-compiled example application visualizing dependencies graph with 
 components' lifecycle phases during the `Runner` execution
@@ -102,6 +106,10 @@ or make it return an error later while running. You can also cancel Runner's con
 <summary>🔹 Component's Run method returns an error</summary>
     <img align="center" src="assets/runner/wait_err.gif"/>
 </details>
+
+### 👉 [Example multi-cmd project](../examples/simple)
+
+Showcases a complete project with multiple executables sharing the same codebase.
 
 ## Runner options
 
@@ -131,8 +139,6 @@ If you want to observe lifecycle phases of individual components (e.g. for loggi
 specify one or more [`RunnerListener`](https://pkg.go.dev/github.com/cardinalby/depo#RunnerListener) instances 
 with this option
 
-## Debug info
+## 👉 [Debug info](5_debug_info.md)
 
 There are some utilities to help you debug the dependency graph and `Runner` behavior:
-
-➡️ [Debug info](5_debug_info.md)

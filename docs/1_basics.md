@@ -51,7 +51,7 @@ Resulting `a`, `b`, and `c` functions are **providers** that
 Internal tracking of dependencies is needed to build a **dependency graph** for proper start/shutdown order
 of components managed by `Runner`.
 
-➡️ [Components' lifecycle](./3_lifecycle.md)
+👉 [Components' lifecycle](./3_lifecycle.md)
 
 The **tracking** is based on the **call stack** inspection which brings us to the main **limitation** of the library:
 
@@ -184,10 +184,10 @@ of a provider that is being constructed (from a `provide` function of one of its
 
 The component that caused the error will be considered failed and won't be included in the graph.
 
-➡️ [Resolving cyclic dependencies](2_resolving_cycles.md)
+👉 [Resolving cyclic dependencies](2_resolving_cycles.md)
 
 ### Debug info
 
 There are some utilities to help you debug the dependency graph and `Runner` behavior:
 
-➡️ [Debug info](5_debug_info.md)
+👉 [Debug info](5_debug_info.md)
