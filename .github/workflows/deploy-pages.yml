@@ -34,14 +34,14 @@ jobs:
         with:
           node-version: 'latest'
           cache: 'npm'
-          cache-dependency-path: example/web/package-lock.json
+          cache-dependency-path: demo/web/package-lock.json
 
       - name: Install dependencies
-        working-directory: example/web
+        working-directory: demo/web
         run: npm ci
 
       - name: Build
-        working-directory: example/web
+        working-directory: demo/web
         env:
           PUBLIC_URL: /depo
         run: npm run build
