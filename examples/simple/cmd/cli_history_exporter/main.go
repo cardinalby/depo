@@ -3,13 +3,16 @@ package main
 import (
 	"os"
 
+	"github.com/cardinalby/depo"
 	"github.com/cardinalby/examples/simple/internal/app/cli_history_exporter"
 )
 
 func main() {
-	app := cli_history_exporter.Init()
+	runner := depo.NewRunner(func() {
+		cli_history_exporter.App()
+	})
 
-	if err := app.Run(nil, nil); err != nil {
+	if err := runner.Run(nil, nil); err != nil {
 		os.Exit(1)
 	}
 }

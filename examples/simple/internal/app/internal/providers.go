@@ -31,47 +31,45 @@ type UsecasesProviders struct {
 // Providers contains shared app dependencies that can be re-used in lazy-manner in different applications
 // (see cmd folder). Entry-point components (HTTP server, CLI commands) that are unique per application
 // are not defined here (see app/api_server and app/cli_history_exporter folders).
-type Providers struct {
+var Providers struct {
 	Infra    InfraProviders
 	Repos    ReposProviders
 	UseCases UsecasesProviders
 }
 
-func NewProviders() (p Providers) {
-	p.Infra = newInfraProviders()
-	p.Repos = newRepoProviders(p.Infra)
-	p.UseCases = newUsecaseProviders(p.Repos, p.Infra)
-
-	return p
+func init() {
+	Providers.Infra = newInfraProviders()
+	Providers.Repos = newRepoProviders()
+	Providers.UseCases = newUsecaseProviders()
 }
 
-func newRepoProviders(infra InfraProviders) (repos ReposProviders) {
+func newRepoProviders() (repos ReposProviders) {
+	// You could've had `infra InfraProviders` argument (instead of global Providers var) to emphasize that
+	// repos can only depend on infra providers but not on use-cases
+
 	repos.Cats = depo.Provide(func() domain.CatsRepository {
-		return repositories.NewCatsRepository(infra.DB())
+		return repositories.NewCatsRepository(Providers.Infra.DB())
 	})
 
 	repos.History = depo.Provide(func() domain.HistoryRepository {
-		return repositories.NewHistoryRepository(infra.LogFile())
+		return repositories.NewHistoryRepository(Providers.Infra.LogFile())
 	})
 
 	return repos
 }
 
-func newUsecaseProviders(
-	repos ReposProviders,
-	infra InfraProviders,
-) (useCases UsecasesProviders) {
+func newUsecaseProviders() (useCases UsecasesProviders) {
 	useCases.History = depo.Provide(func() domain.HistoryUsecase {
 		return usecases.NewHistoryUsecase(
-			repos.History(),
+			Providers.Repos.History(),
 		)
 	})
 
 	useCases.Cats = depo.Provide(func() domain.CatsUsecase {
 		return usecases.NewCatsUsecase(
-			repos.Cats(),
+			Providers.Repos.Cats(),
 			useCases.History(),
-			infra.Config().GetOpTimeout(),
+			Providers.Infra.Config().GetOpTimeout(),
 		)
 	})
 

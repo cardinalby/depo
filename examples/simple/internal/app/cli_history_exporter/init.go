@@ -6,17 +6,14 @@ import (
 	"github.com/cardinalby/examples/simple/internal/app/internal"
 )
 
-func Init() depo.Runner {
-	p := internal.NewProviders()
+var App func() struct{}
 
-	cliHandler := depo.Provide(func() (void struct{}) {
+func init() {
+	p := internal.Providers
+
+	App = depo.Provide(func() (void struct{}) {
 		handler := cli_handlers.NewHistoryExporter(p.UseCases.History())
 		depo.UseLifecycle().AddRunnable(handler)
 		return void
-	})
-
-	return depo.NewRunner(func() {
-		// other tasks can be added here
-		cliHandler()
 	})
 }
